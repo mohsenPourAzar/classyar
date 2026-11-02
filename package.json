@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "Persian RTL classroom management, attendance and modular gradebook with React, Node.js and MongoDB",
   "private": true,
-  "repository": {"type":"git","url":"https://github.com/mohsenPourAzar/classyar-react.git"},
+  "repository": {"type":"git","url":"https://github.com/mohsenPourAzar/classyar.git"},
   "keywords": ["classroom-management","gradebook","attendance","persian","rtl","react","mongodb"],
   "scripts": {
     "start": "node server.mjs",

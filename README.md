@@ -36,8 +36,8 @@ Classyar helps teachers organize classes, maintain student rosters, record atten
 You need **Node.js 22+**, **npm**, and a running **MongoDB** instance. Local MongoDB and MongoDB Atlas connection strings are supported.
 
 ```bash
-git clone https://github.com/mohsenPourAzar/classyar-react.git
-cd classyar-react
+git clone https://github.com/mohsenPourAzar/classyar.git
+cd classyar
 npm ci
 ```
 
