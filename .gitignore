@@ -1,0 +1,11 @@
+node_modules/
+build/
+data/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.DS_Store
+Thumbs.db
+vendor/fonts/IRANSans*.woff2
