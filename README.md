@@ -74,6 +74,8 @@ npm start
 
 Open **http://127.0.0.1:4173**. There is no separate frontend build command.
 
+`PORT` is the website's HTTP port, not the MongoDB port: use `PORT=4173` and keep `27017` in `MONGODB_URI`. If startup reports that the HTTP port is already in use, stop the previous Classyar process with **Ctrl+C**, or choose another web port such as `PORT=4174` and open that port in your browser.
+
 On Windows, `Start_Classyar_Windows.bat` is also available. On macOS/Linux, run `sh start-linux-mac.sh`.
 
 ## A typical teaching workflow

@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {MongoClient} from 'mongodb';
 import {openStore} from '../server/mongodb.mjs';
 import {createApplication} from '../server.mjs';
@@ -19,6 +21,11 @@ test('MongoDB stores all collections, rejects stale/invalid writes, and survives
   const start=async()=>{store=await openStore(settings);server=createApplication(store);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return 'http://127.0.0.1:'+server.address().port;};
   try{
     let url=await start();await store.initialize(initial);
+    const entry=fileURLToPath(new URL('../server.mjs',import.meta.url));
+    const occupied=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:15000,env:{...process.env,MONGODB_URI:settings.uri,MONGODB_DB:database,PORT:String(server.address().port)}});
+    assert.equal(occupied.status,1);assert.match(occupied.stderr,new RegExp('HTTP port '+server.address().port+' is already in use'));
+    const malformed=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:15000,env:{...process.env,MONGODB_URI:'mongodb://private-user:do-not-print-this@[invalid',MONGODB_DB:database,PORT:'0'}});
+    assert.equal(malformed.status,1);assert.match(malformed.stderr,/invalid MongoDB configuration/);assert.doesNotMatch(malformed.stderr,/private-user|do-not-print-this/);
     const health=await fetch(url+'/api/health').then(r=>r.json());assert.equal(health.storage,'mongodb');
     const first=await fetch(url+'/api/state');assert.equal(first.headers.get('etag'),'"0"');
     const before=await first.json();assert.equal(before.revision,0);

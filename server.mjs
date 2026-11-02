@@ -70,21 +70,41 @@ export async function initialState(){
 
 export async function startServer(){
   let store;
+  let stage='database';
   try{
     store=await openStore(config);
     if(!await store.read()){
+      stage='initialization';
       const initial=await initialState();await store.initialize(initial.state);
       console.log('MongoDB initialized from '+initial.source+'.');
     }
     const server=createApplication(store);
+    stage='listen';
     await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(config.port,'127.0.0.1',resolve);});
     console.log('Classyar running at http://127.0.0.1:'+server.address().port+' (MongoDB)');
     const close=()=>{server.close(()=>store.close().then(()=>process.exit(0)));server.closeIdleConnections();};
     process.once('SIGINT',close);process.once('SIGTERM',close);
     return {server,store};
-  }catch{
+  }catch(error){
     await store?.close();
-    console.error('Startup failed. Check MongoDB, .env configuration, legacy data validity, and whether the port is available.');
+    if(error.code==='EADDRINUSE'){
+      console.error('Startup failed: HTTP port '+config.port+' is already in use. Stop the existing web server or choose another PORT in .env, for example PORT='+(config.port===4174?4173:4174)+'.');
+      if(config.port===27017)console.error('Port 27017 is normally used by MongoDB. Keep that port in MONGODB_URI; PORT is for the website.');
+    }else if(error.code==='ERR_SOCKET_BAD_PORT'){
+      console.error('Startup failed: PORT must be an integer between 0 and 65535. Use PORT=4173 for the website.');
+    }else if(error.code==='EACCES'){
+      console.error('Startup failed: permission denied. Check access to the configured web port and local data files.');
+    }else if(error.code===18||error.codeName==='AuthenticationFailed'){
+      console.error('Startup failed: MongoDB authentication failed. Check the credentials and authentication settings in MONGODB_URI.');
+    }else if(error.name==='MongoParseError'||error.name==='MongoInvalidArgumentError'||error.code==='ERR_INVALID_URL'||error.cause?.code==='ERR_INVALID_URL'){
+      console.error('Startup failed: invalid MongoDB configuration. Check MONGODB_URI and MONGODB_DB in .env.');
+    }else if(stage==='database'){
+      console.error('Startup failed: could not connect to or read MongoDB. Check that MongoDB is running and run npm run db:check.');
+    }else if(stage==='initialization'){
+      console.error('Startup failed: could not initialize MongoDB. Check database write permissions and the validity of data/store.json; preserve your original data file.');
+    }else{
+      console.error('Startup failed: could not start the HTTP server. Check PORT in .env and local network permissions.');
+    }
     process.exitCode=1;
   }
 }
