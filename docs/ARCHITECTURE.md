@@ -1,58 +1,65 @@
 # Architecture
 
-Classyar is a single-teacher classroom manager with a Persian RTL React interface and a local Node.js API backed by MongoDB.
+Classyar uses the Next.js App Router, with a Persian RTL client gradebook and server Route Handlers backed by MongoDB.
 
-## Data flow
+## Request flow
 
 ```mermaid
 flowchart LR
-  UI[React interface] --> Cache[Browser cache]
-  UI --> API[Node.js HTTP API]
+  Layout[Next.js layout and page] --> UI[Client classroom views]
+  UI --> Cache[Browser cache]
+  UI --> API[Next.js Route Handlers]
   API --> Validation[State validation]
   Validation --> DB[(MongoDB app_state)]
   UI --> Reports[XLSX / CSV / print]
 ```
 
-## Classroom model
+## Boundaries
 
-A class contains students and ordered modules. Each module contains grading components and sessions. Assessment components contain assessments; marks link students to assessments. Attendance links students to sessions.
+- `src/app/` defines the root layout, application page, error screens, and API routes.
+- `src/components/` contains the stateful classroom controller, feature views, forms, layout, and appearance controls.
+- `src/lib/classroom/` contains pure grading/report modules and anonymous demo data.
+- `src/lib/server/` contains MongoDB configuration, validation, initialization, and API functions.
+- `src/styles/` contains shared CSS; `public/fonts/` contains locally served webfonts.
 
-The dataset contains `classes`, `students`, `modules`, `components`, `sessions`, `attendance`, `assessments`, and `marks`. The scoring layer in `src/logic.js` is shared by browser code and tests.
+The gradebook initializes in a client boundary because it uses browser storage, file downloads, and local appearance settings. The document layout and metadata render through Next.js. MongoDB code is kept outside the client dependency graph, with a server-only boundary on the shared connection.
 
-## MongoDB storage
+## Persistence
 
-`server/mongodb.mjs` stores the complete dataset in `app_state`, inside the `data` field of the document with `_id: "primary"`. Additional fields are `revision` and `updatedAt`.
+The `app_state` document with `_id: "primary"` stores all eight classroom collections in `data`, plus `revision` and `updatedAt`.
 
-A save matches both the identifier and the expected revision, replaces the state fields, and increments the revision in the same atomic MongoDB update. This prevents partially saved related collections and rejects conflicting writes without requiring replica-set transactions.
+A save matches the expected revision and updates the data and revision atomically. Conflicting writes receive HTTP 409. This avoids partially updated related records without requiring replica-set transactions. The API accepts at most 12 MB per request.
 
-This snapshot model suits a modest single-teacher workload. The API accepts up to 12 MB per request. Larger or multi-tenant systems should move to separate indexed collections with transactional workflows.
+The server reuses one MongoDB connection across requests and development hot reloads. Failed initialization clears the cached promise so a later request can reconnect.
 
-## Initialization and migration
+## Database initialization
 
-On startup, the server connects to MongoDB before accepting requests. An empty database imports `data/store.json` when present; otherwise it initializes from the anonymous public demo seed. Existing MongoDB state takes precedence and is never overwritten during initialization. The legacy JSON file remains intact.
+Existing MongoDB data takes precedence. An empty database imports private `data/store.json` when present, otherwise the anonymous seed. Original backup files remain private.
 
-MongoDB configuration comes from environment variables or an ignored `.env` file. The HTTP server serves only explicitly allowed frontend assets. Database configuration, legacy data, and source files in `server/` are not publicly served.
+The root Next.js launcher loads the appropriate environment files before selecting the HTTP port. Development uses `npm run dev`; production uses `npm run build` followed by `npm start`.
 
-## Synchronization
+## Browser synchronization
 
-The React app loads the server snapshot and its revision, keeps a browser cache, and debounces edits before PUT. A successful write advances the known revision. Pending edits are marked in browser storage, retried after transient outages, and retained across reloads.
+The controller reads the server snapshot and revision, stores a browser cache, and debounces edits before PUT. Writes are serialized. Pending changes survive reloads, and transient failures trigger retries.
 
-A stale save receives HTTP 409. The app retains the local state and offers a JSON backup before loading the current server state. Users can then intentionally restore or reconcile their backup. Saving is serialized so an in-flight write cannot accidentally clear later edits.
+A revision conflict retains the local state and offers JSON backup before loading current server data. The user can then reconcile or intentionally restore records.
 
-Theme and font settings are intentionally browser-specific. The preferences bootstrap script applies them before styles render to reduce appearance flashes.
+Theme and font preferences remain local to each browser. A small script applies them before the initial page is displayed. The custom sun/moon control and bundled Persian fonts are shared across the header and Settings.
 
-## Validation and reporting
+## Validation and reports
 
-The API checks record identifiers, required collections, parent relationships, component weights, attendance statuses, duplicate attendance/mark pairs, and numeric score bounds.
+Validation checks identifiers, parent relationships, component weights, attendance states, duplicate attendance/mark pairs, and score bounds.
 
-Weights may temporarily total something other than 20 while a teacher edits a module. The grading engine issues a final grade only after weights total 20 and required records are complete. Missing marks and actual zeroes remain distinct.
+A final grade is produced only when required data is complete and component weights total 20. Actual zeroes remain distinct from unrecorded marks.
 
-Excel, CSV, and print output are generated in the browser. Reports do not upload classroom data to an external export service.
+Report generation remains browser-side; classroom records are not sent to an external export service.
 
-## Testing
+## Verification
 
-Unit tests cover grading, reports, anonymous fixtures, and state validation. Integration tests use real MongoDB in a unique temporary test database and verify API persistence across restart, conflict detection, zero marks, availability errors, and private-file exclusion.
+Unit tests cover grading, exports, anonymous seed records, validation, and launcher port checks. Integration tests use an isolated real MongoDB database to verify the Route Handler service logic, atomic revisions, body limits, reconnects, and sanitized failures.
 
-## Current boundary
+## Operational scope
 
-The app binds to the loopback interface and has no user authentication or role system. A multi-teacher deployment needs identity, authorization, tenant separation, audit logs, indexed entity collections, and operational backup policies.
+The default server binds to the loopback interface. Multi-teacher or public deployment requires identity, authorization, tenant separation, auditing, and operational backups.
+
+Private records and credentials are excluded from Git.

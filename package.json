@@ -1,14 +1,27 @@
 {
-  "name": "classyar-react",
-  "version": "2.0.0",
-  "description": "Persian RTL classroom management, attendance and modular gradebook with React, Node.js and MongoDB",
+  "name": "classyar",
+  "version": "3.0.0",
+  "description": "Persian RTL classroom management, attendance and modular gradebook with Next.js and MongoDB",
   "private": true,
-  "repository": {"type":"git","url":"https://github.com/mohsenPourAzar/classyar.git"},
-  "keywords": ["classroom-management","gradebook","attendance","persian","rtl","react","mongodb"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mohsenPourAzar/classyar.git"
+  },
+  "keywords": [
+    "classroom-management",
+    "gradebook",
+    "attendance",
+    "persian",
+    "rtl",
+    "react",
+    "mongodb"
+  ],
   "scripts": {
-    "start": "node server.mjs",
-    "dev": "node server.mjs",
-    "test": "node --test tests/logic.test.mjs tests/export.test.mjs tests/state.test.mjs",
+    "start": "node scripts/next.mjs start",
+    "dev": "node scripts/next.mjs dev",
+    "build": "next build",
+    "format": "prettier --write src scripts tests *.md *.mjs *.json",
+    "test": "node --test tests/logic.test.mjs tests/export.test.mjs tests/state.test.mjs tests/launcher.test.mjs",
     "test:db": "node --test tests/mongodb.integration.test.mjs",
     "db:check": "node scripts/db-check.mjs"
   },
@@ -16,6 +29,13 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "mongodb": "7.8.0"
+    "@next/env": "16.4.4",
+    "mongodb": "7.8.0",
+    "next": "16.4.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
   }
 }

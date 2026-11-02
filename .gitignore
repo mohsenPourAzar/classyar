@@ -1,4 +1,7 @@
 node_modules/
+.next/
+out/
+next-env.d.ts
 build/
 data/
 .env
@@ -8,4 +11,4 @@ data/
 coverage/
 .DS_Store
 Thumbs.db
-vendor/fonts/IRANSans*.woff2
+public/fonts/IRANSans*.woff2

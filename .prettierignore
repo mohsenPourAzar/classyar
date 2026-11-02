@@ -1,0 +1,7 @@
+.next/
+node_modules/
+data/
+build/
+public/fonts/
+docs/images/
+package-lock.json
