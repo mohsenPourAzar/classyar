@@ -129,6 +129,62 @@ test("MongoDB conversation history persists across reconnects, pages all message
       413,
     );
     assert.equal((await api.read(get(-1), context)).status, 400);
+    const remove = (headers = {}) =>
+      api.remove(
+        new Request(`http://localhost/api/conversations/${id}`, {
+          method: "DELETE",
+          headers,
+        }),
+        context,
+      );
+    assert.equal(
+      (await remove({ Origin: "https://elsewhere.test" })).status,
+      403,
+    );
+    assert.equal(
+      (await (await api.read(get(), context)).json()).messages.length,
+      100,
+    );
+    assert.equal((await remove()).status, 200);
+    assert.equal((await remove()).status, 200);
+    assert.equal((await api.read(get(), context)).status, 410);
+    assert.equal((await api.create(post(metadata))).status, 410);
+    assert.equal(
+      (await api.save(post({ ...metadata, messages: [messages[0]] }), context))
+        .status,
+      410,
+    );
+    assert.deepEqual(
+      (
+        await (
+          await api.list(new Request("http://localhost/api/conversations"))
+        ).json()
+      ).conversations,
+      [],
+    );
+    await store.close();
+    store = await openStore(settings);
+    assert.equal((await api.read(get(), context)).status, 410);
+    const inspection = new MongoClient(settings.uri);
+    try {
+      await inspection.connect();
+      const db = inspection.db(database);
+      assert.equal(
+        await db
+          .collection("conversation_messages")
+          .countDocuments({ conversationId: id }),
+        0,
+      );
+      const tombstone = await db
+        .collection("conversations")
+        .findOne({ _id: id });
+      assert.equal(tombstone.deleted, true);
+      assert.equal(tombstone.title, undefined);
+      assert.equal(tombstone.classId, undefined);
+    } finally {
+      await inspection.close();
+    }
+    assert.equal((await store.read()).revision, 0);
   } finally {
     await store?.close();
     const cleanup = new MongoClient(settings.uri);

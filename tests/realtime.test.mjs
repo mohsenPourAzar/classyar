@@ -4,8 +4,15 @@ import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import seed from "../src/lib/classroom/seed.json" with { type: "json" };
 import { createRealtimeApi, liveConfig } from "../src/lib/server/realtime.mjs";
-import { encodePCM, decodePCM } from "../src/lib/voice/realtime.mjs";
-import { confirmationIntent } from "../src/lib/voice/conversation.mjs";
+import {
+  encodePCM,
+  decodePCM,
+  RealtimeVoice,
+} from "../src/lib/voice/realtime.mjs";
+import {
+  confirmationIntent,
+  isFarewell,
+} from "../src/lib/voice/conversation.mjs";
 import { prepareAssistantPlan } from "../src/lib/classroom/assistant.mjs";
 
 test("live API issues only constrained temporary tokens and validates classroom tools without writing", async () => {
@@ -150,6 +157,71 @@ test("voice confirmation distinguishes new affirmative utterances from requests 
     "",
   ])
     assert.equal(confirmationIntent(value), null, value);
+});
+test("farewells end a call while questions, conditional and negated farewells keep it open", () => {
+  for (const text of [
+    "خداحافظ",
+    "خیلی ممنون، خدا حافظ!",
+    "خدا نگهدار",
+    "فعلاً",
+    "مکالمه را قطع کن",
+    "گفتگو رو تموم کن",
+    "Goodbye!",
+  ])
+    assert.equal(isFarewell(text), true, text);
+  for (const text of [
+    "وقتی گفتم خداحافظ مکالمه را قطع کن",
+    "اگر گفتم خداحافظ",
+    "معنی خداحافظ چیست؟",
+    "خداحافظ نگو",
+    "خدا حافظ نگو",
+    "خدا نگهدار نگو",
+    "قطع نکن",
+    "فعلا نمره علی را بگو",
+    "",
+  ])
+    assert.equal(isFarewell(text), false, text);
+});
+test("ending a call from a transcript stops tracks and skips audio and actions in the same packet", async () => {
+  let stopped = 0,
+    closed = 0,
+    played = 0,
+    called = 0;
+  const voice = new RealtimeVoice({
+    onMessage: (message) => {
+      if (isFarewell(message.serverContent?.inputTranscription?.text))
+        voice.stop();
+    },
+    onState: () => {},
+    onTool: async () => {
+      called++;
+    },
+  });
+  voice.media = { getTracks: () => [{ stop: () => stopped++ }] };
+  voice.session = { close: () => closed++ };
+  voice.play = () => played++;
+  voice.receive({
+    serverContent: {
+      inputTranscription: { text: "خداحافظ" },
+      modelTurn: {
+        parts: [
+          { inlineData: { data: "AAA=", mimeType: "audio/pcm;rate=24000" } },
+        ],
+      },
+      turnComplete: true,
+    },
+    toolCall: {
+      functionCalls: [{ id: "late-call", name: "classroom_request" }],
+    },
+  });
+  await voice.tools;
+  assert.equal(voice.closed, true);
+  assert.equal(voice.abort.signal.aborted, true);
+  assert.equal(stopped, 1);
+  assert.equal(closed, 1);
+  assert.equal(played, 0);
+  assert.equal(called, 0);
+  assert.equal(voice.playbackEnd, undefined);
 });
 test("PCM audio is signed little-endian and survives base64 conversion", () => {
   const data = new ArrayBuffer(8),
