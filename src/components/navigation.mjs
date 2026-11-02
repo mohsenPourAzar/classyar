@@ -5,8 +5,8 @@ export const nav = [
   ["attendance", "حضور و غیاب", "calendar"],
   ["modules", "پودمان‌ها", "boxes"],
   ["assessments", "آزمون و تمرین", "clipboard"],
-  ["grades", "لیست نمرات و خروجی", "chart"],
-  ["settings", "تنظیمات و پشتیبان", "settings"],
+  ["grades", "لیست نمرات و کارنامه", "chart"],
+  ["assistant", "گفتگو با دستیار", "sparkle"],
 ];
 export const statuses = [
   ["present", "حاضر", "حاضر"],

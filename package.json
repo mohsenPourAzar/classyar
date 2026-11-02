@@ -21,14 +21,15 @@
     "dev": "node scripts/next.mjs dev",
     "build": "next build",
     "format": "prettier --write src scripts tests *.md *.mjs *.json",
-    "test": "node --test tests/logic.test.mjs tests/export.test.mjs tests/state.test.mjs tests/launcher.test.mjs",
-    "test:db": "node --test tests/mongodb.integration.test.mjs",
+    "test": "node --test tests/logic.test.mjs tests/export.test.mjs tests/state.test.mjs tests/launcher.test.mjs tests/assistant.test.mjs tests/realtime.test.mjs tests/entities.test.mjs",
+    "test:db": "node --test tests/mongodb.integration.test.mjs tests/history.integration.test.mjs",
     "db:check": "node scripts/db-check.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "dependencies": {
+    "@google/genai": "2.32.0",
     "@next/env": "16.4.4",
     "mongodb": "7.8.0",
     "next": "16.4.4",

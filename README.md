@@ -4,8 +4,6 @@
 
 Classyar helps teachers organize classes, maintain student rosters, record attendance, and calculate grades from flexible assessment components. The interface supports Persian text, right-to-left layouts, and mobile screens.
 
-![Classyar dashboard in light mode](docs/images/dashboard-light.png)
-
 ## Features
 
 - **Classes and students:** manage subjects, academic years, student details, searchable rosters, and bulk student entry.
@@ -14,10 +12,8 @@ Classyar helps teachers organize classes, maintain student rosters, record atten
 - **Accurate grading:** distinguish missing marks from zeroes and show final grades only when the required data is complete.
 - **Reports:** download multi-sheet Excel workbooks, export Persian-friendly CSV, and print landscape grade sheets.
 - **MongoDB persistence:** store every classroom record, with atomic saves and revision checks.
-- **Appearance:** switch between the custom light/dark themes and select Vazirmatn, Iran Sans, or Parastoo.
-- **Recovery:** export/restore JSON backups, retain pending edits in the browser, and retry after connection outages.
-
-![Classyar dashboard in dark mode](docs/images/dashboard-dark.png)
+- **Appearance:** light/dark themes with Parastoo as the fixed Persian font.
+- **Persistence:** MongoDB storage for classroom records and chat history, with browser recovery for pending edits.
 
 ## Stack
 
@@ -100,10 +96,10 @@ src/
     classyar-app.jsx      Classroom state, actions, and synchronization
     classroom-modal.jsx   Editing and creation forms
     ui.jsx                Shared interface controls
-    appearance/           Theme switch and font picker
+    appearance/           Light/dark theme switch
     layout/               Sidebar, header, and class selector
     views/                Dashboard, classes, students, attendance,
-                          modules, assessments, grades, settings
+                          modules, assessments, grades, assistant
   lib/
     classroom/            Grading, reports, defaults, anonymous seed data
     server/               MongoDB connection, initialization, API, validation
@@ -114,7 +110,6 @@ src/
 public/fonts/             Bundled Persian webfonts and their licenses
 scripts/                  Next.js launcher and database check
 tests/                    Unit and MongoDB integration tests
-docs/                     Architecture and screenshots
 ```
 
 ## Classroom workflow
@@ -124,7 +119,7 @@ docs/                     Architecture and screenshots
 3. Add sessions and record attendance.
 4. Create exams, exercises, or projects and enter marks.
 5. View grades for one module or all modules.
-6. Export Excel/CSV, print a report, or save a full JSON backup.
+6. Export Excel/CSV or print a formal grade report.
 
 ### Grade calculation
 
@@ -153,13 +148,13 @@ The default database is `classyar`. Its `app_state` collection contains the docu
 | `assessments` | Exams, exercises, projects, maximum marks |
 | `marks`       | Each student's assessment marks           |
 
-Records are saved together in one atomic update. A stale revision returns HTTP 409 and leaves the newer data intact. The snapshot model is intended for a single teacher and modest datasets; request bodies are limited to 12 MB.
+Classroom records are saved together in one atomic update. A stale revision returns HTTP 409 and leaves the newer data intact. The snapshot model is intended for a single teacher and modest datasets; request bodies are limited to 12 MB. Conversations use separate `conversations` and `conversation_messages` collections, indexed for message pagination. Saving chat messages does not change the classroom revision.
 
 An empty database imports an existing private `data/store.json`, if available, or initializes with anonymous demo records. Existing MongoDB records and the original JSON file are preserved.
 
 Once the app has loaded, browser-cached data and local report generation can be used during a connection outage. Pending edits retry when connectivity returns. Conflicts keep local edits available and offer a backup before retrieving the server version. Loading or refreshing the app requires the Next.js server.
 
-Theme and font choices remain browser-specific. MongoDB credentials stay on the server and must never use the `NEXT_PUBLIC_` prefix.
+Theme choice remains browser-specific; Parastoo is fixed throughout the application. MongoDB credentials stay on the server and must never use the `NEXT_PUBLIC_` prefix.
 
 ### API
 
@@ -171,11 +166,56 @@ Theme and font choices remain browser-specific. MongoDB credentials stay on the 
 
 PUT requires JSON and a quoted revision header, for example `If-Match: "0"`. Responses are not cached.
 
+## Formal grade reports
+
+The gradebook offers two reports in Excel, UTF-8 CSV, and print/PDF:
+
+- **Final grades:** student names and final grades out of 20.
+- **Detailed grades:** every assessment mark, each weighted component, raw assessment sum, module grades, and final grade. For all modules, the report also includes the sum of module grades.
+
+Files and printouts contain a plain black-and-white bordered table, without branding, banners, or decorative headings. Missing grades stay blank; explicit zeroes remain zero. Raw sums are not weighted final grades. An all-module final grade is the average of module grades and remains blank until every module is complete. Turn off the browser's own headers and footers in the print dialog for a table-only PDF.
+
+## Persian voice assistant
+
+Add a Google Gemini API key to your local `.env`, then restart the server:
+
+```dotenv
+GEMINI_API_KEY=your-new-key
+GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_LIVE_MODEL=gemini-3.8-live
+```
+
+Keep this key server-side. Never put it in source code, browser settings, or a `NEXT_PUBLIC_` variable. Rotate any key shared in a conversation or public location. You can choose another Gemini model that supports audio input and structured JSON output.
+
+The floating **گفتگوی زنده** button is available on every page. Open it, select the session and assessment when relevant, and start a continuous voice conversation. Gemini Live streams microphone audio and spoken replies over WebSocket, with live transcripts, interruption support, mute and stop controls. Navigation between app sections preserves the active call. Minimizing the panel keeps a visible active-call indicator and stop button. Switching classes invalidates pending previews and refreshes the classroom context while keeping the call connected. Drag the move handle in the panel header or beside the collapsed launcher to reposition it with a mouse or touch. Arrow keys also move it, Home or a double-click resets it, and the position stays within the viewport and is remembered locally. Saying **خداحافظ** ends the connection and releases the microphone immediately. Each connection lasts up to 15 minutes; start a new one to continue.
+
+The **گفتگو با دستیار** page is a chatbot for general questions and classroom requests. It accepts text and voice messages of up to one minute, uses recent conversation history for follow-ups, and shares messages with the floating panel. Examples:
+
+- Ask who is absent in the selected session.
+- Say a student's full name or code and mark them absent, present, late, or excused.
+- Read several students' marks for the selected assessment, including explicit zeroes.
+- Ask for a student's saved assessment grade, module grade, or attendance history.
+- Request a final or detailed report, or open another section.
+- Create, edit or delete a class, student, module, grading component, session or assessment; switch the light/dark theme or change the active class.
+
+The assistant asks follow-up questions for missing required details instead of guessing. It retains collected fields across turns: for example, it asks for a missing session date or assessment maximum, then executes the complete request. Creations use the same default module/component setup as the manual forms. Deletion summaries include dependent records that were removed. Available records and IDs refresh after changes.
+
+Complete, valid requests execute directly without an approval or confirmation step. The assistant records an action summary and reports whether MongoDB saved the result or a local retry is pending. Missing or ambiguous required information still triggers a short follow-up question. Name/identifier resolution accepts IDs or unique exact titles; ambiguous matches and invalid scores are never guessed. Duplicate identical creation requests return the existing item, and repeated Live function-call IDs reuse the previous result. The assistant distinguishes saved assessment marks (including zero) from an incomplete calculated final grade. Invalid tool requests return actionable errors and cannot repeatedly hit the backend unchanged within the same user turn.
+Voice requires microphone permission and localhost or HTTPS. Live replies come directly from Gemini audio, with no installed Persian system voice required. Stopping the call releases the microphone and audio resources. Raw audio stays in memory. Chat text, voice transcripts, and action summaries are saved to MongoDB and remain available after refresh. The history panel opens previous conversations, and “new conversation” retains older ones. Each history entry has a delete button that removes its messages from MongoDB and the browser cache. Deleted conversation IDs are marked without retaining message content so an offline retry cannot restore a deleted chat. Messages paginate instead of discarding older history. An offline browser outbox retries pending saves and retains unsent text across refresh. Restored action summaries are historical and never replay automatically. A new Live connection receives recent saved conversation context but waits for a new instruction before executing.
+
+`GET /api/assistant` reports key configuration. `POST /api/assistant` handles chatbot text/audio and bounded recent history. `POST /api/assistant/live` issues a single-use ephemeral token with server-locked model, instructions and tools; the main API key never reaches the browser. `POST /api/assistant/tool` validates live function requests and returns deterministic answers or a preview. These endpoints are bounded, rate-limited and do not directly write records.
+
+Google receives audio, conversation text, the class directory, selected-class details (names/codes, modules, session titles/dates and assessment titles/maximum scores), and requested query results needed for spoken answers or follow-up context. Student notes are excluded from the default catalog and appear only when explicitly requested or edited. MongoDB credentials are never sent. Gemini service availability, account access, quotas, pricing and Google's data-processing terms apply. See [Gemini Live](https://ai.google.dev/gemini-api/docs/live), [audio input](https://ai.google.dev/gemini-api/docs/audio) and [structured output](https://ai.google.dev/gemini-api/docs/structured-output).
+
+`GET/POST /api/conversations` lists/starts chats; `DELETE /api/conversations/:id` removes a conversation; `GET/POST /api/conversations/:id/messages` pages and saves message batches. These endpoints never expose MongoDB credentials or restore executable action snapshots. During development, the cached MongoDB wrapper is versioned so Hot Reload can pick up new history methods without requiring data deletion.
+
+The document itself stays fixed in the viewport. Dashboard cards flow naturally without separate section scrollbars; the dashboard has one unified content area. Student and attendance tables, module/class lists, grade reports, chat messages and conversation history use internal scrolling. Printing still produces the plain report table.
+
 ## Fonts
 
-Vazirmatn (Vazir) and Parastoo are bundled under `public/fonts/`, with upstream license files. No external font request is needed.
+Parastoo regular and bold are bundled under `public/fonts/` with their upstream OFL license. The same fixed font is used throughout the interface and print reports; Excel exports also request Parastoo. No external font request is needed.
 
-Iran Sans uses an installed copy or your own licensed files: `public/fonts/IRANSans-Regular.woff2` and `public/fonts/IRANSans-Bold.woff2`. These files are excluded from Git; Vazirmatn is the fallback.
+There is no font picker or settings/backup page. The header retains the light/dark switch.
 
 ## Commands and checks
 
@@ -195,6 +235,4 @@ Integration tests create and remove only uniquely named `classyar_test_*` databa
 
 Classyar is currently a **single-teacher local application**. It does not include login, role-based permissions, or tenant separation. Those features are required before making a real classroom instance publicly accessible.
 
-The repository uses anonymous demo data. Environment files, classroom records, backups, generated builds, and licensed Iran Sans files are excluded from Git.
-
-See [Architecture](docs/ARCHITECTURE.md) for implementation details.
+The repository uses anonymous demo data. Environment files, classroom records, backups, generated builds, and locally supplied licensed assets are excluded from Git.

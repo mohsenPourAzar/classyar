@@ -1,102 +1,90 @@
-import { createElement as e } from "react";
-import { Icon, button, iconButton, badge, Empty } from "../ui.jsx";
-import { cn, fmt } from "../../lib/format.mjs";
-
+import { Icon, IconButton, Button, PageHeading, Empty } from "../ui.jsx";
+import { fmt } from "../../lib/format.mjs";
 export default function Classes({ app }) {
-  return e(
-    "div",
-    { className: "stack" },
-    e(
-      "div",
-      { className: "section-actions" },
-      e(
-        "div",
-        null,
-        e("h2", null, "کلاس‌های من"),
-        e("p", null, "برای هر پایه یا درس، کلاس مستقلی تعریف کنید."),
-      ),
-      button("کلاس جدید", "plus", () => app.open("class"), "primary"),
-    ),
-    app.state.db.classes.length
-      ? e(
-          "div",
-          { className: "class-grid" },
-          app.state.db.classes.map((c) =>
-            e(
-              "article",
-              {
-                className: cn(
-                  "class-card",
-                  c.id === app.state.classId && "class-current",
-                ),
-                key: c.id,
-              },
-              e(
-                "div",
-                { className: "class-card-top" },
-                e(
-                  "div",
-                  {
-                    className: "class-card-icon",
-                    style: { background: c.color + "1a", color: c.color },
-                  },
-                  e(Icon, { name: "school", size: 27 }),
-                ),
-                badge("پایه " + c.grade, "muted"),
-              ),
-              e("h3", null, c.name),
-              e("p", null, c.subject || "درس تعریف نشده"),
-              e(
-                "div",
-                { className: "class-stat-line" },
-                e(
-                  "span",
-                  null,
-                  e(Icon, { name: "users", size: 15 }),
-                  fmt(
-                    app.state.db.students.filter((s) => s.classId === c.id)
-                      .length,
-                  ) + " دانش‌آموز",
-                ),
-                e(
-                  "span",
-                  null,
-                  e(Icon, { name: "boxes", size: 15 }),
-                  fmt(
-                    app.state.db.modules.filter((m) => m.classId === c.id)
-                      .length,
-                  ) + " پودمان",
-                ),
-              ),
-              e(
-                "div",
-                { className: "class-card-footer" },
-                button(
-                  c.id === app.state.classId ? "کلاس فعال" : "ورود به کلاس",
-                  "arrow",
-                  () => app.changeClass(c.id),
-                  c.id === app.state.classId ? "soft" : "primary",
-                ),
-                iconButton("edit", () => app.open("class", c), "ویرایش کلاس"),
-                iconButton(
-                  "trash",
-                  () => app.remove("class", c),
-                  "حذف کلاس",
-                  "danger",
-                ),
-              ),
-            ),
-          ),
-        )
-      : e(Empty, {
-          title: "هنوز کلاسی ندارید",
-          description: "اولین کلاس را برای شروع تعریف کنید.",
-          action: button(
-            "ساخت اولین کلاس",
-            "plus",
-            () => app.open("class"),
-            "primary",
-          ),
-        }),
+  return (
+    <>
+      <PageHeading
+        title="کلاس‌های من"
+        description="برای هر پایه یا درس، کلاس مستقلی تعریف کنید."
+      >
+        <Button icon="plus" onClick={() => app.open("class")}>
+          کلاس جدید
+        </Button>
+      </PageHeading>
+      {app.state.db.classes.length ? (
+        <div className="grid-3">
+          {app.state.db.classes.map((item) => (
+            <article className="card class-card" key={item.id}>
+              <div className="class-card-top">
+                <span
+                  className="class-icon"
+                  style={{ background: item.color + "20", color: item.color }}
+                >
+                  <Icon name="home" size={23} />
+                </span>
+                <span className="grade-chip">
+                  پایه {fmt(Number(item.grade))}
+                </span>
+              </div>
+              <h3 className="class-card-title">{item.name}</h3>
+              <p className="class-card-desc">
+                {item.subject || "درس تعریف نشده"} <span>·</span> {item.year}
+              </p>
+              <div className="class-meta">
+                <span>
+                  <Icon name="users" size={15} />
+                  {fmt(
+                    app.state.db.students.filter(
+                      (student) => student.classId === item.id,
+                    ).length,
+                  )}{" "}
+                  دانش‌آموز
+                </span>
+                <span>
+                  <Icon name="boxes" size={15} />
+                  {fmt(
+                    app.state.db.modules.filter(
+                      (module) => module.classId === item.id,
+                    ).length,
+                  )}{" "}
+                  پودمان
+                </span>
+              </div>
+              <div className="class-actions">
+                <Button
+                  icon={item.id === app.state.classId ? "check" : "arrow"}
+                  variant={
+                    item.id === app.state.classId ? "secondary" : "primary"
+                  }
+                  onClick={() => app.changeClass(item.id)}
+                >
+                  {item.id === app.state.classId ? "کلاس فعال" : "ورود به کلاس"}
+                </Button>
+                <IconButton
+                  icon="edit"
+                  label="ویرایش کلاس"
+                  onClick={() => app.open("class", item)}
+                />
+                <IconButton
+                  icon="trash"
+                  label="حذف کلاس"
+                  danger
+                  onClick={() => app.remove("class", item)}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Empty
+          title="هنوز کلاسی ندارید"
+          action={
+            <Button icon="plus" onClick={() => app.open("class")}>
+              ساخت اولین کلاس
+            </Button>
+          }
+        />
+      )}
+    </>
   );
 }

@@ -102,22 +102,105 @@ const csvCell = (v) =>
     .replace(/^[=+@\-\t\r]/, (m) => "'" + m)
     .replace(/"/g, '""') +
   '"';
+// Raw assessment totals and weighted final grades are intentionally separate.
+function exportRows(db, classId, moduleId = "all", kind = "final") {
+  const klass = db.classes.find((item) => item.id === classId);
+  if (!klass) throw Error("کلاس انتخاب نشده است");
+  if (!["final", "detailed"].includes(kind))
+    throw Error("نوع گزارش نامعتبر است");
+  const modules = db.modules
+    .filter(
+      (item) =>
+        item.classId === classId &&
+        (moduleId === "all" || item.id === moduleId),
+    )
+    .sort((a, b) => a.order - b.order);
+  if (moduleId !== "all" && !modules.length)
+    throw Error("پودمان انتخاب نشده است");
+  const students = db.students.filter((item) => item.classId === classId);
+  const moduleIds = new Set(modules.map((item) => item.id));
+  const components = modules.flatMap((module) =>
+    db.components.filter((item) => item.moduleId === module.id),
+  );
+  const assessments = modules.flatMap((module) =>
+    db.assessments.filter((item) => item.moduleId === module.id),
+  );
+  const prefix = (id) =>
+    moduleId === "all"
+      ? modules.find((item) => item.id === id).name + " / "
+      : "";
+  const headers =
+    kind === "final"
+      ? ["نام و نام خانوادگی", "نمره نهایی (از ۲۰)"]
+      : [
+          "ردیف",
+          "نام و نام خانوادگی",
+          ...assessments.map(
+            (item) =>
+              `${prefix(item.moduleId)}${item.title} (از ${item.maxScore})`,
+          ),
+          ...components.map(
+            (item) =>
+              `${prefix(item.moduleId)}${item.name} (سهم از ${item.weight})`,
+          ),
+          "جمع نمرات ثبت‌شده (خام)",
+          ...modules.map((item) => `${item.name} (از ۲۰)`),
+          ...(moduleId === "all" ? ["جمع نمرات پودمان‌ها"] : []),
+          "نمره نهایی (از ۲۰)",
+        ];
+  const rows = students.map((student, index) => {
+    const grades = modules.map((module) =>
+      L.calculateModule(db, student.id, module.id),
+    );
+    const complete =
+      grades.length > 0 && grades.every((grade) => grade.complete);
+    const sum = complete
+      ? n(grades.reduce((total, grade) => total + grade.total, 0))
+      : "";
+    const final = complete ? n(sum / grades.length) : "";
+    if (kind === "final") return [student.name, final];
+    const raw = assessments.map((assessment) => {
+      const mark = db.marks.find(
+        (item) =>
+          item.assessmentId === assessment.id && item.studentId === student.id,
+      );
+      return mark && L.isScore(mark.score, assessment.maxScore)
+        ? Number(mark.score)
+        : "";
+    });
+    return [
+      index + 1,
+      student.name,
+      ...raw,
+      ...components.map((component) => {
+        const result = L.calculateComponent(db, student.id, component);
+        return result.complete ? result.points : "";
+      }),
+      raw.some((value) => value !== "")
+        ? n(raw.reduce((total, value) => total + (value === "" ? 0 : value), 0))
+        : "",
+      ...grades.map((grade) => (grade.complete ? grade.total : "")),
+      ...(moduleId === "all" ? [sum] : []),
+      final,
+    ];
+  });
+  return {
+    klass,
+    kind,
+    title: kind === "final" ? "نمرات نهایی" : "ریز نمرات",
+    headers,
+    rows,
+    students: students.length,
+    modules: moduleIds.size,
+  };
+}
+function makePrintHTML(report) {
+  const line = (values, tag) =>
+    `<tr>${values.map((value) => `<${tag}>${esc(value)}</${tag}>`).join("")}</tr>`;
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title></title><style>@font-face{font-family:Parastoo;src:url(/fonts/Parastoo.woff2) format("woff2");font-weight:400}@font-face{font-family:Parastoo;src:url(/fonts/Parastoo-Bold.woff2) format("woff2");font-weight:700}@page{size:A4 ${report.headers.length > 5 ? "landscape" : "portrait"};margin:12mm}body{margin:0;background:white;color:black;font-family:Parastoo,serif}table{width:100%;border-collapse:collapse;font-size:${report.headers.length > 12 ? "8" : "10"}pt}th,td{border:1px solid black;padding:6px;text-align:center;background:white;color:black}th{font-weight:bold}tr{break-inside:avoid}thead{display:table-header-group}td:nth-child(${report.kind === "final" ? 1 : 2}){text-align:right}</style></head><body><table><thead>${line(report.headers, "th")}</thead><tbody>${report.rows.map((row) => line(row, "td")).join("")}</tbody></table></body></html>`;
+}
 function makeCSV(report) {
-  const heading = [
-    ["سامانه کلاس‌یار - لیست نمرات"],
-    [
-      "کلاس",
-      report.klass.name,
-      "درس",
-      report.klass.subject,
-      "سال تحصیلی",
-      report.klass.year,
-    ],
-    ["گزارش", report.title],
-    [],
-    report.headers,
-    ...report.rows,
-  ];
+  const heading = [report.headers, ...report.rows];
   return "\ufeff" + heading.map((r) => r.map(csvCell).join(",")).join("\r\n");
 }
 function colName(i) {
@@ -128,25 +211,13 @@ function colName(i) {
 }
 function sheetXML(report) {
   const count = report.headers.length;
-  const data = [
-    ["کلاس‌یار | " + report.title],
-    [
-      "کلاس: " + report.klass.name,
-      "درس: " + (report.klass.subject || "—"),
-      "سال تحصیلی: " + (report.klass.year || "—"),
-    ],
-    [],
-    report.headers,
-    ...report.rows,
-  ];
+  const data = [report.headers, ...report.rows];
   const width = Array.from({ length: count }, (_, i) =>
-    i === 1
+    report.headers[i] === "نام و نام خانوادگی"
       ? 34
-      : i === 2
-        ? 20
-        : i === count - 1
-          ? 29
-          : Math.max(14, Math.min(25, (report.headers[i] || "").length + 4)),
+      : i === 0 && report.kind === "detailed"
+        ? 8
+        : Math.max(14, Math.min(25, (report.headers[i] || "").length + 4)),
   );
   const cols = width
     .map(
@@ -158,31 +229,23 @@ function sheetXML(report) {
     .map((line, r) => {
       const cells = line
         .map((v, c) => {
-          if (v === null || v === undefined || v === "") return "";
           const addr = colName(c) + (r + 1);
-          const header = r < 4;
-          const style =
-            r === 0
-              ? 1
-              : r === 1
-                ? 2
-                : r === 3
-                  ? 3
-                  : typeof v === "number"
-                    ? 4
-                    : 5;
+          const header = r === 0;
+          const style = header ? 1 : typeof v === "number" ? 2 : 3;
+          if (v === null || v === undefined || v === "")
+            return `<c r="${addr}" s="${style}"/>`;
           if (typeof v === "number" && !header && Number.isFinite(v))
             return `<c r="${addr}" s="${style}"><v>${v}</v></c>`;
           return `<c r="${addr}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
         })
         .join("");
-      return `<row r="${r + 1}"${r === 0 ? ' ht="34" customHeight="1"' : r === 3 ? ' ht="38" customHeight="1"' : ""}>${cells}</row>`;
+      return `<row r="${r + 1}"${r === 0 ? ' ht="38" customHeight="1"' : ""}>${cells}</row>`;
     })
     .join("");
   const last = colName(count - 1);
-  const lastrow = Math.max(4, data.length);
+  const lastrow = data.length;
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView rightToLeft="1" workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="25"/><cols>${cols}</cols><sheetData>${rows}</sheetData><mergeCells count="1"><mergeCell ref="A1:${last}1"/></mergeCells><autoFilter ref="A4:${last}${lastrow}"/><pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup orientation="landscape" fitToWidth="1"/></worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView rightToLeft="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="25"/><cols>${cols}</cols><sheetData>${rows}</sheetData><autoFilter ref="A1:${last}${lastrow}"/><printOptions gridLines="0"/><pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0" footer="0"/><pageSetup orientation="landscape" fitToWidth="1"/></worksheet>`;
 }
 function zipStore(parts) {
   const encoder = new TextEncoder(),
@@ -251,23 +314,14 @@ function zipStore(parts) {
   }
   return out;
 }
-const stylesheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Tahoma"/><color rgb="FF334155"/></font><font><b/><sz val="17"/><name val="Tahoma"/><color rgb="FFFFFFFF"/></font><font><b/><sz val="11"/><name val="Tahoma"/><color rgb="FF23345B"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF314BC9"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEAF0FF"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFE5EAF1"/></left><right style="thin"><color rgb="FFE5EAF1"/></right><top style="thin"><color rgb="FFE5EAF1"/></top><bottom style="thin"><color rgb="FFE5EAF1"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" applyFill="1" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" applyFill="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center" wrapText="1"/></xf><xf numFmtId="2" fontId="0" fillId="0" borderId="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+const stylesheet = `<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Parastoo"/><color rgb="FF000000"/></font><font><b/><sz val="11"/><name val="Parastoo"/><color rgb="FF000000"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
 const names = (reports) =>
   reports.map((r, i) => {
     const s = r.title.replace(/[\\/*?:\[\]]/g, "-").slice(0, 27);
     return (i ? s + " " + (i + 1) : s).slice(0, 31);
   });
-function makeXLSX(db, classId, moduleId = "all") {
-  const modules = db.modules
-    .filter((m) => m.classId === classId)
-    .sort((a, b) => a.order - b.order);
-  const reports =
-    moduleId === "all"
-      ? [
-          listRows(db, classId, "all"),
-          ...modules.map((m) => listRows(db, classId, m.id)),
-        ]
-      : [listRows(db, classId, moduleId)];
+function makeXLSX(db, classId, moduleId = "all", kind = "detailed") {
+  const reports = [exportRows(db, classId, moduleId, kind)];
   const sheetNames = names(reports);
   const wbSheets = sheetNames
     .map(
@@ -309,4 +363,4 @@ function makeXLSX(db, classId, moduleId = "all") {
   ];
   return zipStore(entries);
 }
-export { listRows, makeCSV, makeXLSX };
+export { listRows, exportRows, makeCSV, makeXLSX, makePrintHTML };

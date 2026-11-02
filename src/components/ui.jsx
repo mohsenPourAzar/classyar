@@ -101,139 +101,248 @@ function Icon(props) {
     }),
   );
 }
-const button = (label, icon, fn, variant = "soft", extras = {}) =>
-  e(
-    "button",
-    {
-      type: "button",
-      onClick: fn,
-      className: cn(
-        "btn",
-        variant === "primary"
-          ? "btn-primary"
-          : variant === "ghost"
-            ? "btn-ghost"
-            : variant === "danger"
-              ? "btn-danger"
-              : variant === "white"
-                ? "btn-white"
-                : variant === "outline-white"
-                  ? "btn-outline-white"
-                  : "btn-soft",
-        extras.className,
-      ),
-      title: extras.title,
-      disabled: extras.disabled,
-    },
-    icon ? e(Icon, { name: icon, size: 17 }) : null,
-    label,
-  );
-const iconButton = (icon, fn, title, variant = "ghost") =>
-  e(
-    "button",
-    {
-      type: "button",
-      className: cn("icon-btn", variant === "danger" ? "icon-danger" : ""),
-      onClick: fn,
-      title,
-      "aria-label": title,
-    },
-    e(Icon, { name: icon, size: 17 }),
-  );
-const badge = (text, kind = "muted") =>
-  e("span", { className: "badge badge-" + kind }, text);
-const panel = (title, subtitle, actions, content, cls = "") =>
-  e(
-    "section",
-    { className: cn("panel", cls) },
-    e(
-      "div",
-      { className: "panel-head" },
-      e(
-        "div",
-        null,
-        e("h3", null, title),
-        subtitle ? e("p", null, subtitle) : null,
-      ),
-      actions,
-    ),
-    content,
-  );
-function Empty(props) {
-  return e(
-    "div",
-    { className: "empty" },
-    e(
-      "div",
-      { className: "empty-illustration" },
-      e(Icon, { name: props.icon || "boxes", size: 32 }),
-    ),
-    e("h3", null, props.title),
-    e("p", null, props.description || "هنوز اطلاعاتی برای نمایش ثبت نشده است."),
-    props.action || null,
+
+Object.assign(paths, {
+  move: [
+    'path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4"',
+  ],
+  history: ['path d="M3 12a9 9 0 1 0 2.6-6.4M3 3v6h6M12 7v5l3 2"'],
+  "mic-off": [
+    'path d="m3 3 18 18M9 9v3a3 3 0 0 0 5 2M9 4a3 3 0 0 1 6 0v5M5 10v2a7 7 0 0 0 12 5M19 10v2M12 19v3M8 22h8"',
+  ],
+  "chevron-down": ['path d="m6 9 6 6 6-6"'],
+  minus: ['path d="M5 12h14"'],
+  user: ['circle cx="12" cy="7" r="4"', 'path d="M4 21v-2a8 8 0 0 1 16 0v2"'],
+  mic: [
+    'rect x="9" y="2" width="6" height="12" rx="3"',
+    'path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"',
+  ],
+  stop: ['rect x="5" y="5" width="14" height="14" rx="2"'],
+  send: ['path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"'],
+  home: ['path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-8H9v8H4a1 1 0 0 1-1-1Z"'],
+  shield: [
+    'path d="m12 3 8 4v5c0 5-8 9-8 9s-8-4-8-9V7Z"',
+    'path d="m9 12 2 2 4-4"',
+  ],
+  sparkle: [
+    'path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"',
+  ],
+});
+export { Icon };
+export function Button({
+  children,
+  icon,
+  onClick,
+  variant = "primary",
+  className = "",
+  type = "button",
+  ...props
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      className={cn("button", variant !== "primary" && variant, className)}
+      {...props}
+    >
+      {icon && <Icon name={icon} size={16} />}
+      <span>{children}</span>
+    </button>
   );
 }
-function FormInput(p) {
-  return e(
-    "label",
-    { className: "field" },
-    e(
-      "span",
-      { className: "field-label" },
-      p.label,
-      p.required ? e("em", null, " *") : null,
-    ),
-    p.kind === "textarea"
-      ? e("textarea", {
-          name: p.name,
-          defaultValue: p.value || "",
-          placeholder: p.placeholder || "",
-          rows: p.rows || 3,
-          required: p.required || false,
-        })
-      : p.kind === "select"
-        ? e(
-            "select",
-            {
-              name: p.name,
-              defaultValue: p.value || "",
-              required: p.required || false,
-            },
-            (p.options || []).map((x) =>
-              e("option", { key: x.value, value: x.value }, x.label),
-            ),
-          )
-        : e("input", {
-            name: p.name,
-            type: p.kind || "text",
-            defaultValue: p.value == null ? "" : p.value,
-            required: p.required || false,
-            min: p.min,
-            max: p.max,
-            step: p.step,
-            placeholder: p.placeholder || "",
-          }),
-    p.hint ? e("small", null, p.hint) : null,
+export const button = (label, icon, onClick, variant = "soft", extras = {}) => (
+  <Button
+    icon={icon}
+    onClick={onClick}
+    variant={
+      { soft: "secondary", "outline-white": "outline" }[variant] || variant
+    }
+    {...extras}
+  >
+    {label}
+  </Button>
+);
+export function IconButton({
+  icon,
+  onClick,
+  label,
+  danger = false,
+  className = "",
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      className={cn("subaction", danger && "danger-text", className)}
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      {...props}
+    >
+      <Icon name={icon} size={17} />
+    </button>
   );
 }
-function Stat(props) {
-  return e(
-    "div",
-    { className: "stat-card" },
-    e(
-      "div",
-      { className: cn("stat-icon", "stat-" + props.tint) },
-      e(Icon, { name: props.icon, size: 23 }),
-    ),
-    e(
-      "div",
-      null,
-      e("div", { className: "stat-label" }, props.title),
-      e("div", { className: "stat-value" }, fmt(props.value)),
-      props.suffix
-        ? e("div", { className: "stat-suffix" }, props.suffix)
-        : null,
-    ),
+export function Badge({ children, kind = "", className = "" }) {
+  return <span className={cn("pill", kind, className)}>{children}</span>;
+}
+export function PageHeading({ title, description, children }) {
+  return (
+    <div className="toolbar">
+      <div>
+        <h2 className="section-name">{title}</h2>
+        {description && <p className="section-sub">{description}</p>}
+      </div>
+      {children && <div className="toolbar-actions">{children}</div>}
+    </div>
   );
 }
-export { Icon, button, iconButton, badge, panel, Empty, FormInput, Stat };
+export function CardHeading({ title, description, children }) {
+  return (
+    <div className="table-top">
+      <div>
+        <h3 className="table-title">{title}</h3>
+        {description && <p className="table-info">{description}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+export function Person({ student }) {
+  return (
+    <span className="person">
+      <span className="person-initial" aria-hidden="true">
+        {student.name.slice(0, 1)}
+      </span>
+      <span>{student.name}</span>
+    </span>
+  );
+}
+export function Stat({ title, value, icon, tint = "", suffix }) {
+  return (
+    <div className="card stat">
+      <div>
+        <div className="stat-label">{title}</div>
+        <div className="stat-value">
+          {typeof value === "number" ? fmt(value) : (value ?? "—")}
+        </div>
+        {suffix && <div className="stat-detail">{suffix}</div>}
+      </div>
+      <span className={cn("stat-icon", tint)}>
+        <Icon name={icon} size={22} />
+      </span>
+    </div>
+  );
+}
+export function Empty({
+  title,
+  description = "هنوز اطلاعاتی برای نمایش ثبت نشده است.",
+  action,
+  icon = "boxes",
+}) {
+  return (
+    <div className="card empty">
+      <div className="empty-icon">
+        <Icon name={icon} size={28} />
+      </div>
+      <h3 className="empty-title">{title}</h3>
+      <p>{description}</p>
+      {action}
+    </div>
+  );
+}
+export function FormInput({
+  label,
+  name,
+  kind = "text",
+  value,
+  required = false,
+  hint,
+  options = [],
+  ...props
+}) {
+  const id = "field-" + name;
+  return (
+    <div className="field">
+      <label htmlFor={id}>
+        {label}
+        {required && <span className="req"> *</span>}
+      </label>
+      {kind === "textarea" ? (
+        <textarea
+          id={id}
+          name={name}
+          defaultValue={value ?? ""}
+          required={required}
+          {...props}
+        />
+      ) : kind === "select" ? (
+        <select
+          id={id}
+          name={name}
+          defaultValue={value ?? ""}
+          required={required}
+          {...props}
+        >
+          {options.map((option) => (
+            <option value={option.value} key={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          id={id}
+          name={name}
+          type={kind}
+          defaultValue={value ?? ""}
+          required={required}
+          {...props}
+        />
+      )}{" "}
+      {hint && <p className="hint">{hint}</p>}
+    </div>
+  );
+}
+export const componentColor = (component, index = 0) =>
+  component.kind === "attendance"
+    ? "#f0b557"
+    : component.tag === "exercise"
+      ? "#36b5b0"
+      : ["#7277f3", "#36b5b0", "#c084dc"][index % 3];
+export function WeightBar({ components }) {
+  return (
+    <div
+      className="progress-rail"
+      role="img"
+      aria-label={
+        "توزیع بارم: " +
+        components.map((c) => c.name + " " + fmt(c.weight)).join("، ")
+      }
+    >
+      {components.map((component, index) => (
+        <span
+          key={component.id}
+          title={component.name + ": " + fmt(component.weight)}
+          style={{
+            width:
+              Math.max(0, Math.min(100, (component.weight / 20) * 100)) + "%",
+            background: componentColor(component, index),
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+export function syncInfo(app) {
+  if (app.syncBlocked) return { label: "نیاز به بررسی", kind: "danger" };
+  if (!app.state.ready) return { label: "در حال اتصال", kind: "pending" };
+  if (
+    app.state.saveStatus.includes("آفلاین") ||
+    app.state.saveStatus.includes("فقط")
+  )
+    return { label: "ذخیره روی دستگاه", kind: "warning" };
+  if (app.pendingChanges || app.saving)
+    return { label: "در حال ذخیره", kind: "pending" };
+  return { label: "همگام‌سازی شد", kind: "success" };
+}

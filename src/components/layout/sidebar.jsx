@@ -1,90 +1,81 @@
-import { createElement as e } from "react";
-import { Icon, button } from "../ui.jsx";
-import { cn } from "../../lib/format.mjs";
+import { Icon, syncInfo } from "../ui.jsx";
+import { cn, fmt } from "../../lib/format.mjs";
 import { nav } from "../navigation.mjs";
-
 export default function Sidebar({ app }) {
   const groups = [
     ["نمای کلی", ["dashboard", "classes"]],
     ["مدیریت کلاس", ["students", "attendance"]],
-    ["ارزشیابی و گزارش", ["modules", "assessments", "grades"]],
-    ["سامانه", ["settings"]],
+    ["ارزیابی و گزارش", ["modules", "assessments", "grades"]],
+    ["دستیار", ["assistant"]],
   ];
-  return e(
-    "div",
-    null,
-    app.state.mobileMenu
-      ? e("div", {
-          className: "overlay-nav",
-          onClick: () => app.setState({ mobileMenu: false }),
-        })
-      : null,
-    e(
-      "aside",
-      { className: cn("sidebar", app.state.mobileMenu && "sidebar-open") },
-      e(
-        "div",
-        { className: "brand" },
-        e(
-          "div",
-          { className: "brand-mark" },
-          e(Icon, { name: "school", size: 26 }),
-        ),
-        e(
-          "div",
-          null,
-          e("strong", null, "کلاس‌یار"),
-          e("span", null, "فضای مدیریت آموزشی"),
-        ),
-      ),
-      e(
-        "nav",
-        { className: "nav", "aria-label": "منوی اصلی" },
-        groups.map(([label, keys]) =>
-          e(
-            "div",
-            { className: "nav-group", key: label },
-            e("div", { className: "side-title" }, label),
-            keys.map((key) => {
-              const [, , ico] = nav.find((n) => n[0] === key),
-                text = nav.find((n) => n[0] === key)[1];
-              return e(
-                "button",
-                {
-                  key,
-                  type: "button",
-                  onClick: () => app.go(key),
-                  className: cn(
-                    "nav-item",
-                    app.state.view === key && "nav-active",
-                  ),
-                  "aria-current": app.state.view === key ? "page" : undefined,
-                },
-                e(Icon, { name: ico, size: 19 }),
-                e("span", null, text),
-                app.state.view === key
-                  ? e("i", { className: "nav-indicator" })
-                  : null,
-              );
-            }),
-          ),
-        ),
-      ),
-      e(
-        "div",
-        { className: "side-footer" },
-        e(
-          "div",
-          { className: "side-footer-icon" },
-          e(Icon, { name: "info", size: 18 }),
-        ),
-        e(
-          "div",
-          null,
-          e("strong", null, "نسخه ۳ · آفلاین و محلی"),
-          e("span", null, "کلاس‌ها، گزارش‌ها و نمرات"),
-        ),
-      ),
-    ),
+  const status = syncInfo(app);
+  return (
+    <>
+      <button
+        type="button"
+        className={cn("sidebar-backdrop", app.state.mobileMenu && "visible")}
+        aria-label="بستن فهرست"
+        onClick={() => app.setState({ mobileMenu: false })}
+      />
+      <aside
+        id="main-sidebar"
+        className={cn("sidebar", app.state.mobileMenu && "open")}
+      >
+        <div className="brand">
+          <span className="brand-symbol">
+            <Icon name="home" size={25} />
+          </span>
+          <div>
+            <div className="brand-name">کلاس‌یار</div>
+            <div className="brand-caption">فضای مدیریت آموزشی</div>
+          </div>
+        </div>
+        <nav className="nav" aria-label="منوی اصلی">
+          {groups.map(([label, keys]) => (
+            <div key={label}>
+              <div className="nav-label">{label}</div>
+              {keys.map((key) => {
+                const [, text, icon] = nav.find((item) => item[0] === key);
+                return (
+                  <button
+                    type="button"
+                    key={key}
+                    data-view={key}
+                    className={cn(
+                      "nav-btn",
+                      app.state.view === key && "active",
+                    )}
+                    aria-current={app.state.view === key ? "page" : undefined}
+                    onClick={() => app.go(key)}
+                  >
+                    <Icon name={icon} size={18} />
+                    <span>{text}</span>
+                    {key === "classes" && (
+                      <span className="nav-count">
+                        {fmt(app.state.db.classes.length)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="profile">
+            <span className="avatar">د</span>
+            <div>
+              <strong>فضای کاری دبیر</strong>
+              <small>مدیریت کلاس و ارزشیابی</small>
+            </div>
+            <span
+              className={"online-dot " + status.kind}
+              title={status.label}
+              aria-label={status.label}
+            />
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }

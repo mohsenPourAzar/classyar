@@ -19,10 +19,13 @@ import Attendance from "./views/attendance.jsx";
 import Modules from "./views/modules.jsx";
 import Assessments from "./views/assessments.jsx";
 import Grades from "./views/grades.jsx";
-import Settings from "./views/settings.jsx";
+import Assistant from "./views/assistant.jsx";
+import AssistantProvider from "./assistant/assistant-provider.jsx";
+import FloatingAssistant from "./assistant/floating-assistant.jsx";
+import { applyAssistantChanges } from "../lib/classroom/assistant.mjs";
+import { validateState } from "../lib/server/state.mjs";
 import ClassroomModal from "./classroom-modal.jsx";
 import ThemeSelector from "./appearance/theme-selector.jsx";
-import FontSettings from "./appearance/font-settings.jsx";
 
 export default class ClassyarApp extends React.Component {
   constructor(props) {
@@ -34,12 +37,12 @@ export default class ClassyarApp extends React.Component {
       );
       if (L.validateDatabase(saved)) db = L.normalizedDatabase(saved);
     } catch {}
-    const { theme, font } = readAppearance();
+    const { theme } = readAppearance();
     this.state = {
       db,
       theme,
-      font,
       gradeScope: "module",
+      reportKind: "final",
       view: "dashboard",
       classId: db.classes[0] ? db.classes[0].id : null,
       moduleId: null,
@@ -79,14 +82,10 @@ export default class ClassyarApp extends React.Component {
     } else this.setState({ ready: true, saveStatus: "حالت آفلاین" });
   }
   componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.theme !== this.state.theme ||
-      prevState.font !== this.state.font
-    ) {
+    if (prevState.theme !== this.state.theme) {
       applyAppearance(this.state);
       try {
         localStorage.setItem("classyar-theme-v2", this.state.theme);
-        localStorage.setItem("classyar-font-v2", this.state.font);
       } catch {}
     }
     if (prevState.db !== this.state.db) {
@@ -94,7 +93,9 @@ export default class ClassyarApp extends React.Component {
       try {
         localStorage.setItem("classyar-data-v1", snapshot);
       } catch {
-        this.notify("فضای ذخیره مرورگر کافی نیست؛ نسخه پشتیبان بگیرید.");
+        this.notify(
+          "فضای ذخیرهٔ مرورگر کافی نیست؛ تغییرات را در سرور ذخیره کنید.",
+        );
       }
       if (snapshot !== this.lastSavedData) {
         this.pendingChanges = true;
@@ -130,13 +131,16 @@ export default class ClassyarApp extends React.Component {
   conflict() {
     this.syncBlocked = true;
     clearTimeout(this.retryTimer);
-    this.setState({ ready: true, saveStatus: "تداخل تغییرات؛ پشتیبان بگیرید" });
+    this.setState({
+      ready: true,
+      saveStatus: "تداخل تغییرات؛ نسخهٔ محلی را ذخیره کنید",
+    });
     this.notify(
-      "اطلاعات سرور تغییر کرده است. ابتدا نسخه پشتیبان تغییرات این دستگاه را بگیرید و سپس نسخه سرور را دریافت کنید.",
+      "اطلاعات سرور تغییر کرده است. ابتدا نسخهٔ تغییرات این دستگاه را بگیرید و سپس نسخه سرور را دریافت کنید.",
     );
   }
   resolveConflict() {
-    this.exportBackup();
+    this.downloadConflictCopy();
     this.pendingChanges = false;
     this.syncBlocked = false;
     this.rememberSync();
@@ -206,7 +210,7 @@ export default class ClassyarApp extends React.Component {
           saveStatus: "ذخیره نشد؛ داده نامعتبر یا بیش از حد مجاز",
         });
         this.notify(
-          "MongoDB تغییرات را نپذیرفت؛ برای حفظ اطلاعات نسخه پشتیبان بگیرید.",
+          "MongoDB تغییرات را نپذیرفت؛ برای حفظ اطلاعات نسخهٔ تغییرات این دستگاه را ذخیره کنید.",
         );
         return;
       }
@@ -277,22 +281,26 @@ export default class ClassyarApp extends React.Component {
       .filter((s) => s.classId === this.state.classId)
       .sort((a, b) => Number(b.order || 0) - Number(a.order || 0));
   }
-  changeClass(id) {
-    this.setState({
-      classId: id,
-      moduleId: null,
-      sessionId: null,
-      assessmentId: null,
-      search: "",
-      view: "dashboard",
-      mobileMenu: false,
-    });
+  changeClass(id, view = "dashboard") {
+    return new Promise((resolve) =>
+      this.setState(
+        {
+          classId: id,
+          moduleId: null,
+          sessionId: null,
+          assessmentId: null,
+          search: "",
+          view,
+          mobileMenu: false,
+        },
+        resolve,
+      ),
+    );
   }
   go(view) {
-    this.setState({ view, search: "", mobileMenu: false });
-  }
-  renderFontSettings() {
-    return e(FontSettings, { app: this });
+    this.setState({ view, search: "", mobileMenu: false }, () =>
+      document.querySelector(".view-viewport")?.scrollTo(0, 0),
+    );
   }
   renderThemeSelector(name) {
     return e(ThemeSelector, { app: this, name });
@@ -548,63 +556,44 @@ export default class ClassyarApp extends React.Component {
     this.close();
     this.notify(old ? "تغییرات ذخیره شد." : "مورد جدید با موفقیت ثبت شد.");
   }
-  exportBackup() {
+  downloadConflictCopy() {
     downloadText(
       JSON.stringify(this.state.db, null, 2),
-      `classyar-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      `classyar-local-changes-${new Date().toISOString().slice(0, 10)}.json`,
       "application/json;charset=utf-8",
     );
-    this.notify("نسخه پشتیبان دریافت شد.");
-  }
-  importBackup(ev) {
-    const f = ev.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const incoming = JSON.parse(reader.result);
-        if (!L.validateDatabase(incoming))
-          throw Error("ساختار فایل نامعتبر است");
-        if (
-          !confirm(
-            "اطلاعات فعلی با محتوای این نسخه پشتیبان جایگزین شود؟ ابتدا از داده‌های فعلی فایل پشتیبان بگیرید.",
-          )
-        )
-          return;
-        this.setState({
-          db: L.normalizedDatabase(incoming),
-          classId: incoming.classes[0]?.id || null,
-          moduleId: null,
-          sessionId: null,
-          assessmentId: null,
-          view: "dashboard",
-        });
-        this.notify("نسخه پشتیبان بازیابی شد.");
-      } catch {
-        this.notify("فایل انتخاب‌شده معتبر نیست.");
-      }
-    };
-    reader.readAsText(f);
-    ev.target.value = "";
+    this.notify("نسخهٔ تغییرات این دستگاه دریافت شد.");
   }
   get reportScope() {
     return this.state.gradeScope === "all"
       ? "all"
       : this.currentModule?.id || "all";
   }
-  exportGradeList(format = "xlsx") {
+  exportGradeList(
+    format = "xlsx",
+    kind = this.state.reportKind,
+    scope = this.reportScope,
+  ) {
     if (!this.selectedClass) return;
     try {
-      const scope = this.reportScope;
-      const report = EX.listRows(this.state.db, this.state.classId, scope);
+      const report = EX.exportRows(
+        this.state.db,
+        this.state.classId,
+        scope,
+        kind,
+      );
       const safe = (
         this.selectedClass.name +
         "-" +
-        (scope === "all" ? "تمام-پودمان‌ها" : this.currentModule.name)
+        (scope === "all"
+          ? "تمام-پودمان‌ها"
+          : this.state.db.modules.find((module) => module.id === scope)?.name) +
+        "-" +
+        report.title
       ).replace(/[\\/:*?"<>|]/g, "-");
       if (format === "xlsx")
         downloadBinary(
-          EX.makeXLSX(this.state.db, this.state.classId, scope),
+          EX.makeXLSX(this.state.db, this.state.classId, scope, kind),
           `لیست-نمرات-${safe}.xlsx`,
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         );
@@ -623,8 +612,93 @@ export default class ClassyarApp extends React.Component {
       this.notify("خطا در خروجی: " + err.message);
     }
   }
-  printGradeList() {
-    window.print();
+  printGradeList(kind = this.state.reportKind, scope = this.reportScope) {
+    if (!this.selectedClass) return;
+    const frame = document.createElement("iframe");
+    frame.title = "چاپ جدول نمرات";
+    frame.className = "report-print-frame";
+    frame.onload = async () => {
+      await frame.contentDocument.fonts.ready;
+      if (!frame.isConnected) return;
+      const target = frame.contentWindow;
+      const cleanup = () => frame.remove();
+      target.addEventListener("afterprint", cleanup, { once: true });
+      target.focus();
+      target.print();
+      setTimeout(cleanup, 300_000);
+    };
+    frame.srcdoc = EX.makePrintHTML(
+      EX.exportRows(this.state.db, this.state.classId, scope, kind),
+    );
+    document.body.appendChild(frame);
+  }
+  async applyAssistantPlan(plan, snapshot) {
+    if (
+      !plan ||
+      plan.revision !== this.serverRevision ||
+      (plan.context.classId || "") !== (this.state.classId || "") ||
+      this.pendingChanges ||
+      this.saving ||
+      this.syncBlocked ||
+      JSON.stringify(this.state.db) !== snapshot ||
+      snapshot !== this.lastSavedData
+    )
+      throw Error(
+        "اطلاعات از زمان دریافت پاسخ تغییر کرده است؛ درخواست را دوباره ارسال کنید.",
+      );
+    const db = applyAssistantChanges(this.state.db, plan.changes);
+    if (!validateState(db))
+      throw Error("تغییرات معتبر نبود؛ هیچ تغییری ثبت نشد.");
+    // Apply the batch in one state update, using the existing revision-aware save.
+    if (plan.changes.length) {
+      await new Promise((resolve) => this.setState({ db }, resolve));
+      clearTimeout(this.timer);
+      await this.saveToServer();
+    }
+    for (const command of plan.commands) {
+      if (command.type === "switch_class")
+        await this.changeClass(
+          command.classId,
+          this.state.view === "assistant" ? "assistant" : "dashboard",
+        );
+      if (command.type === "set_appearance")
+        this.setState({
+          ...(command.theme ? { theme: command.theme } : {}),
+        });
+      if (command.type === "navigate") this.go(command.view);
+      if (command.type === "export") {
+        if (command.format === "print")
+          this.printGradeList(command.reportKind, command.moduleId);
+        else
+          this.exportGradeList(
+            command.format,
+            command.reportKind,
+            command.moduleId,
+          );
+      }
+    }
+    if (
+      plan.changes.some(
+        (change) =>
+          change.entityType === "class" && change.type === "create_item",
+      )
+    )
+      await this.changeClass(
+        plan.changes.find(
+          (change) =>
+            change.entityType === "class" && change.type === "create_item",
+        ).itemId,
+        this.state.view === "assistant" ? "assistant" : "dashboard",
+      );
+    if (!this.state.db.classes.some((klass) => klass.id === this.state.classId))
+      await this.changeClass(
+        this.state.db.classes[0]?.id || null,
+        this.state.view === "assistant" ? "assistant" : "dashboard",
+      );
+    return {
+      saved: !this.pendingChanges && !this.syncBlocked,
+      revision: this.serverRevision,
+    };
   }
   renderHeader() {
     return e(Header, { app: this });
@@ -656,16 +730,13 @@ export default class ClassyarApp extends React.Component {
   renderGrades() {
     return e(Grades, { app: this });
   }
-  renderSettings() {
-    return e(Settings, { app: this });
-  }
   renderModal() {
     return e(ClassroomModal, { app: this });
   }
   render() {
     const current = this.selectedClass;
     let content;
-    if (!current && !["classes", "settings"].includes(this.state.view))
+    if (!current && !["classes", "assistant"].includes(this.state.view))
       content = e(Empty, {
         title: "هنوز کلاسی تعریف نشده است",
         description:
@@ -697,52 +768,61 @@ export default class ClassyarApp extends React.Component {
         case "grades":
           content = this.renderGrades();
           break;
-        case "settings":
-          content = this.renderSettings();
+        case "assistant":
+          content = e(Assistant, { app: this, key: this.state.classId });
           break;
         default:
           content = this.renderDashboard();
       }
     return e(
-      "div",
-      { className: "app" },
-      this.renderSidebar(),
+      AssistantProvider,
+      { app: this },
       e(
         "div",
-        { className: "main-area" },
-        this.renderHeader(),
+        { className: "app" },
+        this.renderSidebar(),
         e(
-          "main",
-          { className: "main-content" },
-          this.renderClassSwitcher(),
-          this.syncBlocked
-            ? e(
-                "div",
-                { className: "notice no-print", role: "alert" },
-                e(Icon, { name: "alert", size: 18 }),
-                "تغییرات این دستگاه هنوز در سرور ذخیره نشده‌اند.",
-                button("پشتیبان و دریافت نسخه سرور", "download", () =>
-                  this.resolveConflict(),
-                ),
-              )
-            : null,
-          content,
+          "div",
+          { className: "main" },
+          this.renderHeader(),
           e(
-            "footer",
-            { className: "app-footer" },
-            "کلاس‌یار ۳ · طراحی پودمانی و گزارش‌گیری پویا · اطلاعات شما روی دستگاه شما",
+            "main",
+            { className: "content" },
+            this.renderClassSwitcher(),
+            this.syncBlocked
+              ? e(
+                  "div",
+                  { className: "note conflict-note no-print", role: "alert" },
+                  e(Icon, { name: "alert", size: 18 }),
+                  "تغییرات این دستگاه هنوز در سرور ذخیره نشده‌اند.",
+                  button("ذخیرهٔ تغییرات و دریافت نسخهٔ سرور", "download", () =>
+                    this.resolveConflict(),
+                  ),
+                )
+              : null,
+            e(
+              "div",
+              { className: "view-viewport view-" + this.state.view },
+              content,
+            ),
+            e(
+              "footer",
+              { className: "footer" },
+              "کلاس‌یار · مدیریت کلاس، حضور و غیاب و ارزشیابی پودمانی",
+            ),
           ),
         ),
+        this.renderModal(),
+        this.state.notification
+          ? e(
+              "div",
+              { className: "toast show" },
+              e(Icon, { name: "check", size: 18 }),
+              this.state.notification,
+            )
+          : null,
       ),
-      this.renderModal(),
-      this.state.notification
-        ? e(
-            "div",
-            { className: "toast" },
-            e(Icon, { name: "check", size: 18 }),
-            this.state.notification,
-          )
-        : null,
+      e(FloatingAssistant),
     );
   }
 }

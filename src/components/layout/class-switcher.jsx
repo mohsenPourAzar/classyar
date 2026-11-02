@@ -1,33 +1,37 @@
-import { createElement as e } from "react";
-import { Icon, iconButton } from "../ui.jsx";
-
+import { Icon } from "../ui.jsx";
 export default function ClassSwitcher({ app }) {
-  return e(
-    "div",
-    { className: "class-switch" },
-    e(
-      "div",
-      { className: "class-switch-label" },
-      e(Icon, { name: "school", size: 17 }),
-      "کلاس فعال",
-    ),
-    e(
-      "div",
-      { className: "class-switch-actions" },
-      e(
-        "select",
-        {
-          value: app.state.classId || "",
-          onChange: (ev) => app.changeClass(ev.target.value),
-        },
-        app.state.db.classes.map((c) =>
-          e("option", { key: c.id, value: c.id }, c.name),
-        ),
-        app.state.db.classes.length === 0
-          ? e("option", { value: "" }, "ابتدا کلاس بسازید")
-          : null,
-      ),
-      iconButton("plus", () => app.open("class"), "تعریف کلاس جدید"),
-    ),
+  return (
+    <section className="class-context" aria-label="انتخاب کلاس">
+      <div className="context-label">
+        <Icon name="home" size={17} />
+        <span>کلاس فعال</span>
+      </div>
+      <div className="context-controls">
+        <select
+          className="class-select"
+          value={app.state.classId || ""}
+          onChange={(event) => app.changeClass(event.target.value)}
+          aria-label="کلاس فعال"
+        >
+          {!app.state.db.classes.length && (
+            <option value="">ابتدا کلاس بسازید</option>
+          )}
+          {app.state.db.classes.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="button secondary icon-only"
+          title="کلاس جدید"
+          aria-label="تعریف کلاس جدید"
+          onClick={() => app.open("class")}
+        >
+          <Icon name="plus" size={18} />
+        </button>
+      </div>
+    </section>
   );
 }

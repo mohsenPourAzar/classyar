@@ -1,218 +1,217 @@
-import { createElement as e } from "react";
-import { Icon, button, iconButton, badge, panel, Empty } from "../ui.jsx";
-import { cn, fmt } from "../../lib/format.mjs";
-
+import {
+  Icon,
+  IconButton,
+  Button,
+  PageHeading,
+  CardHeading,
+  Person,
+  Badge,
+  Empty,
+} from "../ui.jsx";
+import { fmt } from "../../lib/format.mjs";
 export default function Assessments({ app }) {
-  const m = app.currentModule,
+  const module = app.currentModule,
     db = app.state.db;
-  if (!m)
-    return e(Empty, {
-      title: "ابتدا یک پودمان تعریف کنید",
-      action: button(
-        "ایجاد پودمان",
-        "plus",
-        () => app.open("module"),
-        "primary",
-      ),
-    });
-  const items = db.assessments.filter((a) => a.moduleId === m.id),
-    selected = items.find((a) => a.id === app.state.assessmentId) || items[0];
-  const componentOf = (a) => db.components.find((c) => c.id === a.componentId);
-  const allComponents = db.components.filter(
-    (c) => c.moduleId === m.id && c.kind === "assessment",
-  );
-  const markCount = (a) =>
-    db.marks.filter((x) => x.assessmentId === a.id).length;
-  return e(
-    "div",
-    { className: "stack" },
-    e(
-      "div",
-      { className: "section-actions" },
-      e(
-        "div",
-        null,
-        e("h2", null, "آزمون‌ها و تمرین‌ها"),
-        e(
-          "p",
-          null,
-          "هر بخش می‌تواند هر تعداد آزمون، تمرین یا آیتم سفارشی داشته باشد.",
-        ),
-      ),
-      button(
-        "آیتم ارزشیابی جدید",
-        "plus",
-        () => app.open("assessment"),
-        "primary",
-        { disabled: !allComponents.length },
-      ),
+  if (!module)
+    return (
+      <Empty
+        title="ابتدا یک پودمان تعریف کنید"
+        action={
+          <Button icon="plus" onClick={() => app.open("module")}>
+            ایجاد پودمان
+          </Button>
+        }
+      />
+    );
+  const components = db.components.filter(
+      (item) => item.moduleId === module.id && item.kind === "assessment",
     ),
-    e(
-      "div",
-      { className: "subnav-row" },
-      e("label", null, "پودمان موردنظر"),
-      e(
-        "select",
-        {
-          value: m.id,
-          onChange: (ev) =>
-            app.setState({ moduleId: ev.target.value, assessmentId: null }),
-        },
-        app.modules.map((x) => e("option", { key: x.id, value: x.id }, x.name)),
-      ),
-      badge(fmt(items.length) + " آیتم"),
-    ),
-    allComponents.length === 0
-      ? e(
-          "div",
-          { className: "notice" },
-          e(Icon, { name: "alert" }),
-          "در این پودمان هنوز بخش نمره‌دهی از نوع آزمون/تمرین ندارید. از صفحه پودمان‌ها یک بخش ایجاد کنید.",
-        )
-      : null,
-    items.length
-      ? e(
-          "div",
-          { className: "assessment-layout" },
-          e(
-            "div",
-            { className: "assessment-list panel" },
-            e("h3", null, "آیتم‌های ارزشیابی"),
-            items.map((a) =>
-              e(
-                "button",
-                {
-                  key: a.id,
-                  className: cn(
-                    "assessment-item",
-                    selected?.id === a.id && "assessment-selected",
-                  ),
-                  onClick: () => app.setState({ assessmentId: a.id }),
-                },
-                e(
-                  "div",
-                  { className: "assessment-icon" },
-                  e(Icon, { name: "clipboard", size: 19 }),
-                ),
-                e(
-                  "div",
-                  { className: "grow" },
-                  e("strong", null, a.title),
-                  e(
-                    "span",
-                    null,
-                    (componentOf(a)?.name || "بخش حذف‌شده") +
-                      " · از " +
-                      fmt(a.maxScore),
-                  ),
-                ),
-                e(
-                  "span",
-                  { className: "assess-count" },
-                  fmt(markCount(a)) + "/" + fmt(app.students.length),
-                ),
-              ),
-            ),
-          ),
-          selected
-            ? panel(
-                selected.title,
-                `${componentOf(selected)?.name || "بخش نامشخص"} · ${selected.date || "بدون تاریخ"} · سقف ${fmt(selected.maxScore)} نمره`,
-                e(
-                  "div",
-                  { className: "toolbar-actions" },
-                  iconButton(
-                    "edit",
-                    () => app.open("assessment", selected),
-                    "ویرایش آیتم",
-                  ),
-                  iconButton(
-                    "trash",
-                    () => app.remove("assessment", selected),
-                    "حذف آیتم",
-                    "danger",
-                  ),
-                ),
-                e(
-                  "div",
-                  { className: "table-scroll" },
-                  e(
-                    "table",
-                    { className: "data-table" },
-                    e(
-                      "thead",
-                      null,
-                      e(
-                        "tr",
-                        null,
-                        e("th", null, "#"),
-                        e("th", null, "نام دانش‌آموز"),
-                        e("th", null, `نمره (از ${fmt(selected.maxScore)})`),
-                        e("th", null, "وضعیت"),
-                      ),
-                    ),
-                    e(
-                      "tbody",
-                      null,
-                      app.students.map((s, i) => {
-                        const mark = db.marks.find(
-                          (x) =>
-                            x.assessmentId === selected.id &&
-                            x.studentId === s.id,
-                        );
-                        return e(
-                          "tr",
-                          { key: s.id },
-                          e("td", { className: "number" }, fmt(i + 1)),
-                          e("td", null, e("strong", null, s.name)),
-                          e(
-                            "td",
-                            null,
-                            e("input", {
-                              className: "score-input",
-                              type: "number",
-                              min: 0,
-                              max: selected.maxScore,
-                              step: "0.25",
-                              value: mark ? mark.score : "",
-                              placeholder: "—",
-                              onChange: (ev) =>
-                                app.setMark(
-                                  selected.id,
-                                  s.id,
-                                  ev.target.value,
-                                  selected.maxScore,
-                                ),
-                              "aria-label": "نمره " + s.name,
-                            }),
-                          ),
-                          e(
-                            "td",
-                            null,
-                            mark
-                              ? badge("ثبت شده", "success")
-                              : badge("ثبت نشده", "muted"),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                ),
-                "assessment-mark-panel",
-              )
-            : null,
-        )
-      : e(Empty, {
-          title: "هنوز آزمون یا تمرینی ثبت نشده",
-          description: "اولین آیتم را با بارم دلخواه تعریف کنید.",
-          action: allComponents.length
-            ? button(
-                "تعریف ارزشیابی",
-                "plus",
-                () => app.open("assessment"),
-                "primary",
-              )
-            : null,
-        }),
+    items = db.assessments.filter((item) => item.moduleId === module.id),
+    selected = items.find((item) => item.id === app.state.assessmentId);
+  return (
+    <>
+      <PageHeading
+        title="آزمون و تمرین"
+        description="آیتم‌های ارزیابی را بسازید و نمره‌های هر دانش‌آموز را ثبت کنید."
+      >
+        <Button
+          icon="plus"
+          disabled={!components.length}
+          onClick={() => app.open("assessment")}
+        >
+          آیتم ارزیابی جدید
+        </Button>
+      </PageHeading>
+      <div className="card filter-card">
+        <div>
+          <h3 className="card-title">پودمان موردنظر</h3>
+          <p className="card-subtitle">
+            آزمون‌ها و تمرین‌های هر پودمان را جداگانه مدیریت کنید.
+          </p>
+        </div>
+        <div className="filters">
+          <select
+            className="class-select"
+            value={module.id}
+            aria-label="پودمان ارزیابی"
+            onChange={(event) =>
+              app.setState({ moduleId: event.target.value, assessmentId: null })
+            }
+          >
+            {app.modules.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+          <Badge>{fmt(items.length)} آیتم</Badge>
+        </div>
+      </div>
+      {!components.length && (
+        <div className="note">
+          برای ثبت ارزیابی، ابتدا در صفحهٔ پودمان‌ها یک بخش آزمون یا تمرین ایجاد
+          کنید.
+        </div>
+      )}
+      {items.length ? (
+        <div className="grid-2 assessments-grid">
+          {items.map((item) => {
+            const count = db.marks.filter(
+              (mark) => mark.assessmentId === item.id,
+            ).length;
+            return (
+              <article className="card assessment-card" key={item.id}>
+                <span className="assessment-symbol">
+                  <Icon name="clipboard" size={22} />
+                </span>
+                <div className="row-grow">
+                  <h3 className="card-title">{item.title}</h3>
+                  <p className="card-subtitle">
+                    {
+                      components.find(
+                        (component) => component.id === item.componentId,
+                      )?.name
+                    }{" "}
+                    · {item.date || "بدون تاریخ"}
+                  </p>
+                  <div className="assessment-meta">
+                    <Badge kind="brand">بارم {fmt(item.maxScore)}</Badge>
+                    <span className="mini-muted">
+                      {fmt(count)} از {fmt(app.students.length)} نمره ثبت‌شده
+                    </span>
+                  </div>
+                  <div className="assessment-actions">
+                    <Button
+                      icon="edit"
+                      variant="secondary"
+                      className="small"
+                      onClick={() => app.setState({ assessmentId: item.id })}
+                    >
+                      ثبت نمره
+                    </Button>
+                    <IconButton
+                      icon="edit"
+                      label="ویرایش ارزیابی"
+                      onClick={() => app.open("assessment", item)}
+                    />
+                    <IconButton
+                      icon="trash"
+                      label="حذف ارزیابی"
+                      danger
+                      onClick={() => app.remove("assessment", item)}
+                    />
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <Empty
+          icon="clipboard"
+          title="هنوز آزمون یا تمرینی ثبت نشده"
+          description="آیتم جدیدی با بارم دلخواه برای این پودمان بسازید."
+          action={
+            components.length ? (
+              <Button icon="plus" onClick={() => app.open("assessment")}>
+                تعریف ارزیابی
+              </Button>
+            ) : null
+          }
+        />
+      )}
+      {selected && (
+        <section className="card score-panel">
+          <CardHeading
+            title={"ثبت نمره · " + selected.title}
+            description={
+              "بارم " +
+              fmt(selected.maxScore) +
+              " · نمرهٔ خالی با صفر تفاوت دارد."
+            }
+          >
+            <IconButton
+              icon="close"
+              label="بستن ثبت نمره"
+              onClick={() => app.setState({ assessmentId: null })}
+            />
+          </CardHeading>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ردیف</th>
+                  <th>دانش‌آموز</th>
+                  <th>نمره از {fmt(selected.maxScore)}</th>
+                  <th>وضعیت</th>
+                </tr>
+              </thead>
+              <tbody>
+                {app.students.map((student, index) => {
+                  const mark = db.marks.find(
+                    (item) =>
+                      item.assessmentId === selected.id &&
+                      item.studentId === student.id,
+                  );
+                  return (
+                    <tr key={student.id}>
+                      <td className="muted">{fmt(index + 1)}</td>
+                      <td>
+                        <Person student={student} />
+                      </td>
+                      <td>
+                        <input
+                          className="grades-input"
+                          type="number"
+                          min="0"
+                          max={selected.maxScore}
+                          step="0.25"
+                          value={mark?.score ?? ""}
+                          placeholder="—"
+                          aria-label={"نمره " + student.name}
+                          onChange={(event) =>
+                            app.setMark(
+                              selected.id,
+                              student.id,
+                              event.target.value,
+                              selected.maxScore,
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        <Badge kind={mark ? "success" : ""}>
+                          {mark ? "ثبت‌شده" : "ثبت‌نشده"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </>
   );
 }

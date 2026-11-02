@@ -1,57 +1,45 @@
-import { createElement as e } from "react";
-import { Icon, iconButton } from "../ui.jsx";
-import { cn, dateNow } from "../../lib/format.mjs";
+import { Icon, syncInfo } from "../ui.jsx";
+import { dateNow } from "../../lib/format.mjs";
 import { nav } from "../navigation.mjs";
-
 export default function Header({ app }) {
-  const selected = app.selectedClass,
-    pageTitle = (nav.find((n) => n[0] === app.state.view) || nav[0])[1];
-  return e(
-    "header",
-    { className: "topbar" },
-    e(
-      "div",
-      { className: "topbar-right" },
-      iconButton(
-        "menu",
-        () => app.setState((s) => ({ mobileMenu: !s.mobileMenu })),
-        "بازکردن فهرست",
-      ),
-      e(
-        "div",
-        null,
-        e(
-          "div",
-          { className: "crumbs" },
-          "فضای کاری دبیر",
-          e(Icon, { name: "arrow", size: 13 }),
-          selected ? selected.name : "مدیریت کلاس",
-        ),
-        e("h1", null, pageTitle),
-      ),
-    ),
-    e(
-      "div",
-      { className: "topbar-left" },
-      e(
-        "span",
-        { className: "today" },
-        e(Icon, { name: "calendar", size: 16 }),
-        dateNow(),
-      ),
-      e(
-        "span",
-        { className: "connection" },
-        e("i", {
-          className: cn(
-            "connection-dot",
-            !app.state.saveStatus.includes("MongoDB") && "connection-offline",
-          ),
-        }),
-        app.state.saveStatus,
-      ),
-      app.renderThemeSelector("header-theme"),
-      e("div", { className: "avatar" }, "د"),
-    ),
+  const title = (nav.find((item) => item[0] === app.state.view) || nav[0])[1],
+    status = syncInfo(app);
+  return (
+    <header className="topbar">
+      <div className="heading-group">
+        <button
+          type="button"
+          className="icon-btn menu-toggle"
+          aria-label="بازکردن فهرست"
+          aria-expanded={app.state.mobileMenu}
+          aria-controls="main-sidebar"
+          onClick={() => app.setState((s) => ({ mobileMenu: !s.mobileMenu }))}
+        >
+          <Icon name="menu" size={19} />
+        </button>
+        <div>
+          <div className="heading-eyebrow">
+            فضای کاری دبیر <span className="breadcrumb-separator">/</span>{" "}
+            {app.selectedClass?.name || "کلاس‌های من"}
+          </div>
+          <h1 className="heading-title">{title}</h1>
+        </div>
+      </div>
+      <div className="top-actions">
+        <div
+          className={"status-chip " + status.kind}
+          title={app.state.saveStatus}
+          role="status"
+        >
+          <span className="dot" />
+          {status.label}
+        </div>
+        <div className="date-chip">
+          <Icon name="calendar" size={14} />
+          <time>{dateNow()}</time>
+        </div>
+        {app.renderThemeSelector("header-theme")}
+      </div>
+    </header>
   );
 }

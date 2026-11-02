@@ -1,9 +1,47 @@
-import { createElement as e } from "react";
-import { Icon, button, iconButton, FormInput } from "./ui.jsx";
+import { createElement as e, useEffect, useRef } from "react";
+import { Icon, Button, IconButton, FormInput } from "./ui.jsx";
 import { fmt, dateNow } from "../lib/format.mjs";
 
 export default function ClassroomModal({ app }) {
+  const dialogRef = useRef(null);
   const m = app.state.modal;
+  useEffect(() => {
+    if (!m) return;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = requestAnimationFrame(() =>
+      dialogRef.current?.querySelector("input,textarea,select")?.focus(),
+    );
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        app.close();
+      }
+      if (event.key !== "Tab") return;
+      const controls = [
+        ...(dialogRef.current?.querySelectorAll(
+          'button:not([disabled]),input:not([type="hidden"]),textarea,select',
+        ) || []),
+      ];
+      const first = controls[0],
+        last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [m, app]);
   if (!m) return null;
   const item = m.item || {};
   const classId = app.state.classId;
@@ -22,13 +60,18 @@ export default function ClassroomModal({ app }) {
       }),
       e(
         "div",
-        { className: "fields-two" },
+        { className: "form-grid" },
         e(FormInput, {
           label: "پایه",
           name: "grade",
           value: item.grade || "10",
           kind: "select",
-          options: [10, 11, 12, 13].map((n) => ({ value: n, label: "" + n })),
+          options: [
+            [10, "دهم"],
+            [11, "یازدهم"],
+            [12, "دوازدهم"],
+            [13, "سایر"],
+          ].map(([value, label]) => ({ value, label })),
         }),
         e(FormInput, {
           label: "سال تحصیلی",
@@ -88,7 +131,7 @@ export default function ClassroomModal({ app }) {
       }),
       e(
         "p",
-        { className: "modal-hint" },
+        { className: "note" },
         "می‌توانید اسامی را از Excel کپی کرده و در این کادر جای‌گذاری کنید.",
       ),
     ];
@@ -154,7 +197,7 @@ export default function ClassroomModal({ app }) {
       }),
       e(
         "p",
-        { className: "modal-hint" },
+        { className: "note" },
         "می‌توانید هر تعداد بخش تعریف کنید؛ جمع وزن بخش‌ها باید ۲۰ شود. تغییر نوع بخش ممکن است روی ارزیابی‌های قبلی اثر بگذارد.",
       ),
     ];
@@ -185,7 +228,7 @@ export default function ClassroomModal({ app }) {
       }),
       e(
         "p",
-        { className: "modal-hint" },
+        { className: "note" },
         "هر جلسه دقیقاً به یک پودمان متصل است؛ سهم حضور براساس جلسات همان پودمان محاسبه می‌شود.",
       ),
     ];
@@ -213,7 +256,7 @@ export default function ClassroomModal({ app }) {
       }),
       e(
         "div",
-        { className: "fields-two" },
+        { className: "form-grid" },
         e(FormInput, {
           label: "بارم این آیتم",
           name: "maxScore",
@@ -231,7 +274,7 @@ export default function ClassroomModal({ app }) {
       ),
       e(
         "p",
-        { className: "modal-hint" },
+        { className: "note" },
         "بارم این آیتم مستقل از سهم بخش است. همه آیتم‌های یک بخش به نسبت بارم خود در آن بخش اثر می‌گذارند.",
       ),
     ];
@@ -239,7 +282,7 @@ export default function ClassroomModal({ app }) {
   return e(
     "div",
     {
-      className: "modal-backdrop",
+      className: "dialog-overlay open",
       onMouseDown: (ev) => {
         if (ev.target === ev.currentTarget) app.close();
       },
@@ -247,40 +290,40 @@ export default function ClassroomModal({ app }) {
     e(
       "div",
       {
-        className: "modal",
+        className: "dialog",
+        ref: dialogRef,
         role: "dialog",
         "aria-modal": "true",
         "aria-label": title,
       },
       e(
         "div",
-        { className: "modal-head" },
+        { className: "dialog-head" },
         e(
           "div",
           null,
           e("h3", null, title),
           e("p", null, "اطلاعات را تکمیل و ذخیره کنید."),
         ),
-        iconButton("close", () => app.close(), "بستن"),
+        e(IconButton, {
+          icon: "close",
+          onClick: () => app.close(),
+          label: "بستن",
+        }),
       ),
       e(
         "form",
         { onSubmit: (ev) => app.saveModal(ev) },
         e(
           "div",
-          { className: "modal-body" },
+          { className: "dialog-body" },
           fields.map((field, i) => e("div", { key: i }, field)),
         ),
         e(
           "div",
-          { className: "modal-footer" },
-          button("انصراف", null, () => app.close(), "ghost"),
-          e(
-            "button",
-            { className: "btn btn-primary", type: "submit" },
-            e(Icon, { name: "save", size: 17 }),
-            "ذخیره تغییرات",
-          ),
+          { className: "dialog-foot" },
+          e(Button, { type: "submit", icon: "check" }, "ذخیره تغییرات"),
+          e(Button, { variant: "ghost", onClick: () => app.close() }, "انصراف"),
         ),
       ),
     ),

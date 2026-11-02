@@ -1,189 +1,197 @@
-import { createElement as e } from "react";
-import { Icon, button, badge, panel, Empty, Stat } from "../ui.jsx";
+import { Icon, Button, Stat, Badge, WeightBar } from "../ui.jsx";
 import { fmt } from "../../lib/format.mjs";
-import * as L from "../../lib/classroom/logic.mjs";
-
+import { attendanceStats, moduleWeight } from "../../lib/classroom/logic.mjs";
 export default function Dashboard({ app }) {
   const db = app.state.db,
-    cl = app.selectedClass;
-  const stats = L.attendanceStats(db, app.state.classId);
-  const as = db.assessments.filter(
-    (a) => a.moduleId && app.modules.some((m) => m.id === a.moduleId),
-  );
-  const count = app.students.length;
-  return e(
-    "div",
-    { className: "stack" },
-    e(
-      "div",
-      { className: "hero" },
-      e("div", { className: "hero-pattern" }),
-      e(
-        "div",
-        { className: "hero-content" },
-        e("div", { className: "hero-label" }, "پنل مدیریت مدرسه"),
-        e(
-          "h2",
-          null,
-          "مدیریت کلاس‌ها،",
-          e("br"),
-          e("span", null, "دقیق‌تر از همیشه."),
-        ),
-        e(
-          "p",
-          null,
-          "حضور و غیاب، تمرین‌ها، آزمون‌ها و نمرات پودمانی را در یک محیط یکپارچه ثبت کنید.",
-        ),
-        e(
-          "div",
-          { className: "hero-actions" },
-          button("ثبت جلسه جدید", "plus", () => app.open("session"), "white"),
-          button(
-            "مشاهده کارنامه",
-            "chart",
-            () => app.go("grades"),
-            "outline-white",
-          ),
-        ),
-      ),
-      e(
-        "div",
-        { className: "hero-symbol" },
-        e(Icon, { name: "school", size: 130 }),
-      ),
-    ),
-    e(
-      "div",
-      { className: "stats-grid" },
-      e(Stat, {
-        title: "کلاس‌های تعریف‌شده",
-        value: db.classes.length,
-        icon: "layers",
-        tint: "indigo",
-        suffix: "قابل مدیریت",
-      }),
-      e(Stat, {
-        title: "دانش‌آموزان این کلاس",
-        value: count,
-        icon: "users",
-        tint: "violet",
-        suffix: cl ? cl.name : "بدون کلاس",
-      }),
-      e(Stat, {
-        title: "جلسات ثبت‌شده",
-        value: stats.sessions,
-        icon: "calendar",
-        tint: "teal",
-        suffix: "در کلاس فعال",
-      }),
-      e(Stat, {
-        title: "آیتم‌های ارزشیابی",
-        value: as.length,
-        icon: "clipboard",
-        tint: "orange",
-        suffix: "آزمون، تمرین و سایر موارد",
-      }),
-    ),
-    e(
-      "div",
-      { className: "dashboard-grid" },
-      panel(
-        "پودمان‌های کلاس",
-        "پیشرفت و تنظیمات ارزشیابی",
-        button("مدیریت پودمان", "arrow", () => app.go("modules"), "ghost"),
-        app.modules.length
-          ? e(
-              "div",
-              { className: "module-quick-list" },
-              app.modules.map((m) => {
-                const comps = db.components.filter((c) => c.moduleId === m.id);
-                const val = L.moduleWeight(db, m.id);
-                return e(
-                  "button",
-                  {
-                    key: m.id,
-                    className: "module-quick",
-                    onClick: () => {
-                      app.setState({ moduleId: m.id });
-                      app.go("grades");
-                    },
-                  },
-                  e(
-                    "div",
-                    { className: "module-quick-symbol" },
-                    e(Icon, { name: "boxes", size: 20 }),
-                  ),
-                  e(
-                    "div",
-                    { className: "grow" },
-                    e("strong", null, m.name),
-                    e("span", null, comps.length + " بخش نمره‌دهی"),
-                  ),
-                  badge(
-                    "سقف " + fmt(val) + " از ۲۰",
-                    Math.abs(val - 20) < 0.001 ? "success" : "warning",
-                  ),
-                  e(Icon, { name: "arrow", size: 17 }),
-                );
-              }),
-            )
-          : e(Empty, {
-              title: "هنوز پودمانی تعریف نشده",
-              action: button(
-                "ساخت پودمان",
-                "plus",
-                () => app.open("module"),
-                "primary",
-              ),
-            }),
-      ),
-      panel(
-        "دسترسی سریع",
-        "کارهای روزمره را از اینجا انجام دهید",
-        null,
-        e(
-          "div",
-          { className: "quick-actions" },
-          [
-            [
-              "users",
-              "افزودن دانش‌آموز",
-              "ثبت نام جدید",
-              () => app.open("student"),
-            ],
-            [
-              "calendar",
-              "ثبت حضور و غیاب",
-              "جلسه و وضعیت حضور",
-              () => app.go("attendance"),
-            ],
-            [
-              "clipboard",
-              "ثبت نمره",
-              "آزمون یا تمرین",
-              () => app.go("assessments"),
-            ],
-            [
-              "download",
-              "تهیه پشتیبان",
-              "دریافت فایل اطلاعات",
-              () => app.exportBackup(),
-            ],
-          ].map((x, i) =>
-            e(
-              "button",
-              { key: i, className: "quick-action", onClick: x[3] },
-              e(
-                "div",
-                { className: "quick-icon" },
-                e(Icon, { name: x[0], size: 21 }),
-              ),
-              e("div", null, e("strong", null, x[1]), e("span", null, x[2])),
-              e(Icon, { name: "arrow", size: 16 }),
-            ),
-          ),
-        ),
-      ),
-    ),
+    selected = app.selectedClass,
+    stats = attendanceStats(db, app.state.classId),
+    assessments = db.assessments.filter((item) =>
+      app.modules.some((module) => module.id === item.moduleId),
+    );
+  const counts = db.classes.slice(0, 7).map((item) => ({
+      name: item.name,
+      count: db.students.filter((student) => student.classId === item.id)
+        .length,
+    })),
+    max = Math.max(1, ...counts.map((item) => item.count));
+  const shortcuts = [
+    ["users", "افزودن دانش‌آموز", () => app.open("student")],
+    ["calendar", "ثبت حضور و غیاب", () => app.go("attendance")],
+    ["clipboard", "ثبت ارزیابی", () => app.go("assessments")],
+    ["chart", "کارنامه و خروجی", () => app.go("grades")],
+  ];
+  return (
+    <div className="dashboard-page">
+      <section className="hero">
+        <div className="hero-content">
+          <div className="hero-eyebrow">
+            پنل مدیریت کلاس <span className="breadcrumb-separator">/</span>{" "}
+            {selected?.name}
+          </div>
+          <h2 className="hero-title">
+            مدیریت کلاس‌ها،
+            <br />
+            دقیق‌تر از همیشه.
+          </h2>
+          <p className="hero-desc">
+            حضور و غیاب، تکالیف، ارزیابی و کارنامه، همه در یک فضای منظم و
+            یکپارچه.
+          </p>
+          <div className="hero-actions">
+            <Button
+              icon="plus"
+              onClick={() => app.open("session")}
+              disabled={!app.modules.length}
+            >
+              ثبت جلسه جدید
+            </Button>
+            <Button
+              icon="chart"
+              variant="outline"
+              onClick={() => app.go("grades")}
+            >
+              مشاهده کارنامه
+            </Button>
+          </div>
+        </div>
+        <div className="hero-visual">
+          <div className="floating-progress">
+            <div className="small">نمای کلی کلاس‌های شما</div>
+            <div>
+              <span className="big">{fmt(app.students.length)}</span>{" "}
+              <span className="small">دانش‌آموز در کلاس فعال</span>
+            </div>
+            <div className="mini-bars" aria-label="تعداد دانش‌آموزان کلاس‌ها">
+              {counts.map((item, index) => (
+                <span
+                  key={index}
+                  title={item.name + ": " + fmt(item.count)}
+                  style={{ height: (item.count / max) * 35 + 8 + "px" }}
+                />
+              ))}
+            </div>
+            <div className="small">مدیریت آموزشی هوشمند و ساده</div>
+          </div>
+        </div>
+      </section>
+      <div className="grid-4">
+        <Stat
+          title="کلاس‌های تعریف‌شده"
+          value={db.classes.length}
+          icon="layers"
+          suffix="قابل مدیریت"
+        />
+        <Stat
+          title="دانش‌آموزان این کلاس"
+          value={app.students.length}
+          icon="users"
+          tint="pink"
+          suffix={selected?.name}
+        />
+        <Stat
+          title="جلسات ثبت‌شده"
+          value={stats.sessions}
+          icon="calendar"
+          tint="green"
+          suffix="در کلاس فعال"
+        />
+        <Stat
+          title="آیتم‌های ارزیابی"
+          value={assessments.length}
+          icon="clipboard"
+          tint="orange"
+          suffix="آزمون و تمرین"
+        />
+      </div>
+      <div className="dashboard-layout">
+        <section className="card card-pad">
+          <div className="section-head">
+            <div>
+              <h3 className="card-title">پودمان‌های کلاس</h3>
+              <p className="card-subtitle">ساختار نمره‌دهی و وضعیت هر پودمان</p>
+            </div>
+            <button
+              type="button"
+              className="link"
+              onClick={() => app.go("modules")}
+            >
+              مدیریت پودمان‌ها ‹
+            </button>
+          </div>
+          {app.modules.length ? (
+            app.modules.map((module) => {
+              const components = db.components.filter(
+                  (item) => item.moduleId === module.id,
+                ),
+                weight = moduleWeight(db, module.id);
+              return (
+                <button
+                  type="button"
+                  className="module-row module-link"
+                  key={module.id}
+                  onClick={() => {
+                    app.setState({ moduleId: module.id, gradeScope: "module" });
+                    app.go("grades");
+                  }}
+                >
+                  <span className="module-index">{fmt(module.order)}</span>
+                  <div className="row-grow">
+                    <strong>{module.name}</strong>
+                    <p className="mini-muted">
+                      {fmt(components.length)} بخش نمره‌دهی · مجموع{" "}
+                      {fmt(weight)} نمره
+                    </p>
+                    <WeightBar components={components} />
+                  </div>
+                  <Badge
+                    kind={Math.abs(weight - 20) < 0.001 ? "success" : "warning"}
+                  >
+                    {Math.abs(weight - 20) < 0.001 ? "فعال" : "تنظیم بارم"}
+                  </Badge>
+                </button>
+              );
+            })
+          ) : (
+            <div className="empty">
+              <p>هنوز پودمانی تعریف نشده است.</p>
+              <Button icon="plus" onClick={() => app.open("module")}>
+                ایجاد پودمان
+              </Button>
+            </div>
+          )}
+        </section>
+        <section className="card card-pad">
+          <div className="section-head">
+            <div>
+              <h3 className="card-title">دسترسی سریع</h3>
+              <p className="card-subtitle">کارهای پرتکرار در یک نگاه</p>
+            </div>
+            <Icon name="sparkle" size={19} />
+          </div>
+          <div className="shortcuts">
+            {shortcuts.map(([icon, label, action]) => (
+              <button
+                type="button"
+                className="shortcut"
+                key={label}
+                onClick={action}
+              >
+                <Icon name={icon} size={18} />
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="workspace-note">
+            <strong>
+              <Icon name="info" size={14} /> یادآوری دبیر
+            </strong>
+            <p>
+              وضعیت حضور و نمره‌ها را به‌روز نگه دارید؛ برای ثبت سریع اطلاعات
+              می‌توانید از دستیار صوتی استفاده کنید.
+            </p>
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
