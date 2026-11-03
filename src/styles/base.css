@@ -73,6 +73,27 @@ textarea:focus-visible {
   outline: 3px solid rgba(var(--brand-rgb), 0.35);
   outline-offset: 2px;
 }
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable]:not([contenteditable="false"]),
+.chat-message-text,
+.voice-summary-line p,
+.data-table td,
+.formal-report,
+.selectable-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+button,
+button *,
+svg {
+  -webkit-user-select: none;
+  user-select: none;
+}
 ::selection {
   background: rgba(var(--brand-rgb), 0.27);
 }

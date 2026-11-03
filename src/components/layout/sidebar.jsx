@@ -1,10 +1,11 @@
+import BrandMark from "../brand-mark.jsx";
 import { Icon, syncInfo } from "../ui.jsx";
 import { cn, fmt } from "../../lib/format.mjs";
 import { nav } from "../navigation.mjs";
 export default function Sidebar({ app }) {
   const groups = [
-    ["نمای کلی", ["dashboard", "classes"]],
-    ["مدیریت کلاس", ["students", "attendance"]],
+    ["فضای کاری", ["dashboard", "classes"]],
+    ["کلاس جاری", ["students", "attendance"]],
     ["ارزیابی و گزارش", ["modules", "assessments", "grades"]],
     ["دستیار", ["assistant"]],
   ];
@@ -22,9 +23,7 @@ export default function Sidebar({ app }) {
         className={cn("sidebar", app.state.mobileMenu && "open")}
       >
         <div className="brand">
-          <span className="brand-symbol">
-            <Icon name="home" size={25} />
-          </span>
+          <BrandMark size={46} className="brand-symbol" />
           <div>
             <div className="brand-name">کلاس‌یار</div>
             <div className="brand-caption">فضای مدیریت آموزشی</div>

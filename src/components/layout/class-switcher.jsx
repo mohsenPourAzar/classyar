@@ -1,3 +1,4 @@
+import Select from "../select.jsx";
 import { Icon } from "../ui.jsx";
 export default function ClassSwitcher({ app }) {
   return (
@@ -7,7 +8,7 @@ export default function ClassSwitcher({ app }) {
         <span>کلاس فعال</span>
       </div>
       <div className="context-controls">
-        <select
+        <Select
           className="class-select"
           value={app.state.classId || ""}
           onChange={(event) => app.changeClass(event.target.value)}
@@ -21,7 +22,7 @@ export default function ClassSwitcher({ app }) {
               {item.name}
             </option>
           ))}
-        </select>
+        </Select>
         <button
           type="button"
           className="button secondary icon-only"

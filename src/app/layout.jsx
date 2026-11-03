@@ -5,9 +5,13 @@ import "@/styles/base.css";
 import "@/styles/design.css";
 import "@/styles/assistant.css";
 import "@/styles/workspace.css";
+import "@/styles/select.css";
+import "@/styles/responsive.css";
+import "@/styles/brand.css";
 
 export const metadata = {
   title: "کلاس‌یار | مدیریت کلاس و نمره",
+  applicationName: "Classyar",
   description:
     "مدیریت کلاس، حضور و غیاب و ارزشیابی پودمانی با ذخیره‌سازی در MongoDB",
 };

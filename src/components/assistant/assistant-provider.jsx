@@ -635,8 +635,9 @@ export default function AssistantProvider({ app, children }) {
     }
   }
   async function startLive() {
-    if (!history.ready) return;
-    if (live.current || busy || recording || committing.current) return;
+    setExpanded(true);
+    if (live.current && !live.current.closed) return;
+    if (!history.ready || busy || recording || committing.current) return;
     if (!isSynchronized(latest.current.app)) {
       setError("ابتدا منتظر اتصال MongoDB و ذخیرهٔ تغییرات بمانید.");
       setExpanded(true);

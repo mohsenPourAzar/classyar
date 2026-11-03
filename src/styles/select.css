@@ -1,0 +1,181 @@
+.select-control {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  min-width: 160px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+}
+.select-control.class-select {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.select-control .select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.7;
+  text-align: start;
+  box-shadow: 0 1px 2px #19243b04;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.select-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--border));
+  background: var(--surface2);
+}
+.select-trigger[aria-expanded="true"] {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--softbrand);
+}
+.select-trigger:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.select-chevron {
+  color: var(--muted);
+  transition: transform 0.18s;
+}
+.select-trigger[aria-expanded="true"] .select-chevron {
+  transform: rotate(180deg);
+  color: var(--brand);
+}
+.select-menu {
+  z-index: 300;
+  box-sizing: border-box;
+  padding: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow:
+    0 12px 36px #0b12201a,
+    0 2px 6px #0b122008;
+  direction: rtl;
+  user-select: none;
+  animation: select-appear 0.12s ease-out;
+}
+.select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.select-option.is-active {
+  background: var(--surface2);
+}
+.select-option[aria-selected="true"] {
+  background: var(--softbrand);
+  color: var(--brand);
+  font-weight: 700;
+}
+.select-option[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+.field .select-control,
+.assistant-context .select-control {
+  width: 100%;
+  min-width: 0;
+}
+.filter-card .filters > label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.filter-card .filters > label .select-control {
+  color: var(--text);
+}
+.chat-scope-card summary {
+  border-radius: 10px;
+  padding: 4px;
+  transition: background 0.15s;
+}
+.chat-scope-card summary::after {
+  content: "⌄";
+  color: var(--muted);
+  margin-inline-start: auto;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.15s;
+}
+.chat-scope-card[open] summary::after {
+  transform: rotate(180deg);
+}
+.chat-scope-card summary:hover {
+  background: var(--surface2);
+}
+@keyframes select-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .select-menu {
+    animation: none;
+  }
+  .select-trigger,
+  .select-chevron {
+    transition: none;
+  }
+}
+@media (max-width: 750px) {
+  .filter-card .filters > label {
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .filter-card .filters > label .select-control {
+    width: 100%;
+    min-width: 0;
+  }
+}

@@ -1,3 +1,4 @@
+import Select from "../select.jsx";
 import {
   IconButton,
   Button,
@@ -47,6 +48,21 @@ export default function Attendance({ app }) {
         />
       ) : (
         <>
+          <div className="attendance-session-picker">
+            <Select
+              value={active.id}
+              aria-label="جلسهٔ حضور و غیاب"
+              onChange={(event) =>
+                app.setState({ sessionId: event.target.value })
+              }
+            >
+              {sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.title} · {session.date}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div className="sessions-strip" aria-label="جلسه‌ها">
             {sessions.map((session) => (
               <button

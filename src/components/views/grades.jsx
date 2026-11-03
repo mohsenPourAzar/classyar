@@ -1,3 +1,4 @@
+import Select from "../select.jsx";
 import { Button, PageHeading, Empty } from "../ui.jsx";
 import { fmt } from "../../lib/format.mjs";
 import { exportRows } from "../../lib/classroom/reports.mjs";
@@ -18,7 +19,14 @@ export default function Grades({ app }) {
         title="لیست نمرات و کارنامه"
         description="جدول رسمی و بدون رنگ برای دریافت فایل یا چاپ."
       >
-        <Button icon="download" onClick={() => app.exportGradeList("xlsx")}>
+        <Button icon="edit" onClick={() => app.go("assessments")}>
+          ثبت و ویرایش نمره‌ها
+        </Button>
+        <Button
+          variant="ghost"
+          icon="download"
+          onClick={() => app.exportGradeList("xlsx")}
+        >
           دانلود Excel
         </Button>
         <Button
@@ -40,7 +48,7 @@ export default function Grades({ app }) {
         <div className="filters">
           <label>
             نوع گزارش{" "}
-            <select
+            <Select
               className="class-select"
               aria-label="نوع گزارش"
               value={kind}
@@ -50,11 +58,11 @@ export default function Grades({ app }) {
             >
               <option value="final">نمرات نهایی</option>
               <option value="detailed">ریز نمرات و جمع</option>
-            </select>
+            </Select>
           </label>
           <label>
             محدوده{" "}
-            <select
+            <Select
               className="class-select"
               aria-label="محدوده گزارش"
               value={app.reportScope}
@@ -72,11 +80,11 @@ export default function Grades({ app }) {
                 </option>
               ))}
               <option value="all">تمام پودمان‌ها</option>
-            </select>
+            </Select>
           </label>
         </div>
       </div>
-      <div className="formal-report table-wrap">
+      <div className={`formal-report table-wrap report-${kind}`}>
         <table className="formal-table">
           <thead>
             <tr>
@@ -105,11 +113,6 @@ export default function Grades({ app }) {
         آزمون‌ها و تمرین‌هاست؛ نمره نهایی با بارم بخش‌ها محاسبه می‌شود. در
         محدودهٔ تمام پودمان‌ها، نمره نهایی فقط پس از تکمیل همهٔ پودمان‌ها و از
         میانگین آن‌ها محاسبه می‌شود. فایل و چاپ فقط شامل جدول هستند.
-      </div>
-      <div className="no-print">
-        <Button variant="ghost" onClick={() => app.go("assessments")}>
-          ثبت و ویرایش نمره‌ها
-        </Button>
       </div>
     </div>
   );

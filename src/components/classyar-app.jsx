@@ -26,6 +26,7 @@ import { applyAssistantChanges } from "../lib/classroom/assistant.mjs";
 import { validateState } from "../lib/server/state.mjs";
 import ClassroomModal from "./classroom-modal.jsx";
 import ThemeSelector from "./appearance/theme-selector.jsx";
+import BrandMark from "./brand-mark.jsx";
 
 export default class ClassyarApp extends React.Component {
   constructor(props) {
@@ -37,6 +38,10 @@ export default class ClassyarApp extends React.Component {
       );
       if (L.validateDatabase(saved)) db = L.normalizedDatabase(saved);
     } catch {}
+    this.preferredClassId = null;
+    try {
+      this.preferredClassId = localStorage.getItem("classyar-active-class-v1");
+    } catch {}
     const { theme } = readAppearance();
     this.state = {
       db,
@@ -44,7 +49,10 @@ export default class ClassyarApp extends React.Component {
       gradeScope: "module",
       reportKind: "final",
       view: "dashboard",
-      classId: db.classes[0] ? db.classes[0].id : null,
+      classId:
+        db.classes.find((klass) => klass.id === this.preferredClassId)?.id ||
+        db.classes[0]?.id ||
+        null,
       moduleId: null,
       sessionId: null,
       assessmentId: null,
@@ -82,6 +90,14 @@ export default class ClassyarApp extends React.Component {
     } else this.setState({ ready: true, saveStatus: "حالت آفلاین" });
   }
   componentDidUpdate(prevProps, prevState) {
+    if (prevState.classId !== this.state.classId) {
+      this.preferredClassId = this.state.classId;
+      try {
+        if (this.state.classId)
+          localStorage.setItem("classyar-active-class-v1", this.state.classId);
+        else localStorage.removeItem("classyar-active-class-v1");
+      } catch {}
+    }
     if (prevState.theme !== this.state.theme) {
       applyAppearance(this.state);
       try {
@@ -170,9 +186,11 @@ export default class ClassyarApp extends React.Component {
       this.setState((s) => ({
         db,
         classId:
-          s.classId && saved.classes.some((c) => c.id === s.classId)
-            ? s.classId
-            : (saved.classes[0] || {}).id || null,
+          [this.preferredClassId, s.classId].find((id) =>
+            saved.classes.some((klass) => klass.id === id),
+          ) ||
+          saved.classes[0]?.id ||
+          null,
         ready: true,
         saveStatus: "متصل به MongoDB",
       }));
@@ -281,20 +299,27 @@ export default class ClassyarApp extends React.Component {
       .filter((s) => s.classId === this.state.classId)
       .sort((a, b) => Number(b.order || 0) - Number(a.order || 0));
   }
-  changeClass(id, view = "dashboard") {
+  changeClass(id, view) {
     return new Promise((resolve) =>
-      this.setState(
-        {
+      this.setState((state) => {
+        if (id && !state.db.classes.some((klass) => klass.id === id))
+          return null;
+        const nextView = view ?? state.view;
+        if (id === state.classId)
+          return nextView === state.view
+            ? { mobileMenu: false }
+            : { view: nextView, search: "", mobileMenu: false };
+        return {
           classId: id,
           moduleId: null,
           sessionId: null,
           assessmentId: null,
+          gradeScope: "module",
           search: "",
-          view,
+          view: nextView,
           mobileMenu: false,
-        },
-        resolve,
-      ),
+        };
+      }, resolve),
     );
   }
   go(view) {
@@ -390,10 +415,17 @@ export default class ClassyarApp extends React.Component {
       );
     });
     if (type === "class")
-      this.setState((s) => ({
-        classId: s.db.classes.find((c) => c.id !== item.id)?.id || null,
-        view: "classes",
-      }));
+      this.setState((s) =>
+        s.classId !== item.id
+          ? null
+          : {
+              classId: s.db.classes[0]?.id || null,
+              moduleId: null,
+              sessionId: null,
+              assessmentId: null,
+              gradeScope: "module",
+            },
+      );
     if (type === "module") this.setState({ moduleId: null });
     if (type === "session") this.setState({ sessionId: null });
     if (type === "assessment") this.setState({ assessmentId: null });
@@ -549,7 +581,7 @@ export default class ClassyarApp extends React.Component {
             }),
           );
     });
-    if (m.type === "class" && !old) this.setState({ classId: id });
+    if (m.type === "class" && !old) this.changeClass(id, "students");
     if (m.type === "module") this.setState({ moduleId: id });
     if (m.type === "session") this.setState({ sessionId: id });
     if (m.type === "assessment") this.setState({ assessmentId: id });
@@ -657,10 +689,7 @@ export default class ClassyarApp extends React.Component {
     }
     for (const command of plan.commands) {
       if (command.type === "switch_class")
-        await this.changeClass(
-          command.classId,
-          this.state.view === "assistant" ? "assistant" : "dashboard",
-        );
+        await this.changeClass(command.classId, this.state.view);
       if (command.type === "set_appearance")
         this.setState({
           ...(command.theme ? { theme: command.theme } : {}),
@@ -688,12 +717,12 @@ export default class ClassyarApp extends React.Component {
           (change) =>
             change.entityType === "class" && change.type === "create_item",
         ).itemId,
-        this.state.view === "assistant" ? "assistant" : "dashboard",
+        this.state.view === "assistant" ? "assistant" : "students",
       );
     if (!this.state.db.classes.some((klass) => klass.id === this.state.classId))
       await this.changeClass(
         this.state.db.classes[0]?.id || null,
-        this.state.view === "assistant" ? "assistant" : "dashboard",
+        this.state.view,
       );
     return {
       saved: !this.pendingChanges && !this.syncBlocked,
@@ -788,7 +817,7 @@ export default class ClassyarApp extends React.Component {
           e(
             "main",
             { className: "content" },
-            this.renderClassSwitcher(),
+            this.state.view !== "classes" ? this.renderClassSwitcher() : null,
             this.syncBlocked
               ? e(
                   "div",
@@ -808,6 +837,7 @@ export default class ClassyarApp extends React.Component {
             e(
               "footer",
               { className: "footer" },
+              e(BrandMark, { size: 16 }),
               "کلاس‌یار · مدیریت کلاس، حضور و غیاب و ارزشیابی پودمانی",
             ),
           ),

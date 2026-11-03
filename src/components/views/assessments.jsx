@@ -1,3 +1,4 @@
+import Select from "../select.jsx";
 import {
   Icon,
   IconButton,
@@ -50,7 +51,7 @@ export default function Assessments({ app }) {
           </p>
         </div>
         <div className="filters">
-          <select
+          <Select
             className="class-select"
             value={module.id}
             aria-label="پودمان ارزیابی"
@@ -63,7 +64,7 @@ export default function Assessments({ app }) {
                 {item.name}
               </option>
             ))}
-          </select>
+          </Select>
           <Badge>{fmt(items.length)} آیتم</Badge>
         </div>
       </div>
@@ -72,73 +73,6 @@ export default function Assessments({ app }) {
           برای ثبت ارزیابی، ابتدا در صفحهٔ پودمان‌ها یک بخش آزمون یا تمرین ایجاد
           کنید.
         </div>
-      )}
-      {items.length ? (
-        <div className="grid-2 assessments-grid">
-          {items.map((item) => {
-            const count = db.marks.filter(
-              (mark) => mark.assessmentId === item.id,
-            ).length;
-            return (
-              <article className="card assessment-card" key={item.id}>
-                <span className="assessment-symbol">
-                  <Icon name="clipboard" size={22} />
-                </span>
-                <div className="row-grow">
-                  <h3 className="card-title">{item.title}</h3>
-                  <p className="card-subtitle">
-                    {
-                      components.find(
-                        (component) => component.id === item.componentId,
-                      )?.name
-                    }{" "}
-                    · {item.date || "بدون تاریخ"}
-                  </p>
-                  <div className="assessment-meta">
-                    <Badge kind="brand">بارم {fmt(item.maxScore)}</Badge>
-                    <span className="mini-muted">
-                      {fmt(count)} از {fmt(app.students.length)} نمره ثبت‌شده
-                    </span>
-                  </div>
-                  <div className="assessment-actions">
-                    <Button
-                      icon="edit"
-                      variant="secondary"
-                      className="small"
-                      onClick={() => app.setState({ assessmentId: item.id })}
-                    >
-                      ثبت نمره
-                    </Button>
-                    <IconButton
-                      icon="edit"
-                      label="ویرایش ارزیابی"
-                      onClick={() => app.open("assessment", item)}
-                    />
-                    <IconButton
-                      icon="trash"
-                      label="حذف ارزیابی"
-                      danger
-                      onClick={() => app.remove("assessment", item)}
-                    />
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <Empty
-          icon="clipboard"
-          title="هنوز آزمون یا تمرینی ثبت نشده"
-          description="آیتم جدیدی با بارم دلخواه برای این پودمان بسازید."
-          action={
-            components.length ? (
-              <Button icon="plus" onClick={() => app.open("assessment")}>
-                تعریف ارزیابی
-              </Button>
-            ) : null
-          }
-        />
       )}
       {selected && (
         <section className="card score-panel">
@@ -211,6 +145,90 @@ export default function Assessments({ app }) {
             </table>
           </div>
         </section>
+      )}
+      {items.length ? (
+        <div className="grid-2 assessments-grid">
+          {items.map((item) => {
+            const count = db.marks.filter(
+              (mark) => mark.assessmentId === item.id,
+            ).length;
+            return (
+              <article
+                className={`card assessment-card ${selected?.id === item.id ? "is-selected" : ""}`}
+                key={item.id}
+              >
+                <span className="assessment-symbol">
+                  <Icon name="clipboard" size={22} />
+                </span>
+                <div className="row-grow">
+                  <h3 className="card-title">{item.title}</h3>
+                  <p className="card-subtitle">
+                    {
+                      components.find(
+                        (component) => component.id === item.componentId,
+                      )?.name
+                    }{" "}
+                    · {item.date || "بدون تاریخ"}
+                  </p>
+                  <div className="assessment-meta">
+                    <Badge kind="brand">بارم {fmt(item.maxScore)}</Badge>
+                    <span className="mini-muted">
+                      {fmt(count)} از {fmt(app.students.length)} نمره ثبت‌شده
+                    </span>
+                  </div>
+                  <div className="assessment-actions">
+                    <Button
+                      icon="edit"
+                      variant="secondary"
+                      className="small"
+                      aria-pressed={selected?.id === item.id}
+                      onClick={() =>
+                        app.setState({ assessmentId: item.id }, () => {
+                          document
+                            .querySelector(".score-panel")
+                            ?.scrollIntoView({
+                              block: "start",
+                              behavior: window.matchMedia(
+                                "(prefers-reduced-motion: reduce)",
+                              ).matches
+                                ? "instant"
+                                : "smooth",
+                            });
+                        })
+                      }
+                    >
+                      ثبت نمره
+                    </Button>
+                    <IconButton
+                      icon="edit"
+                      label="ویرایش ارزیابی"
+                      onClick={() => app.open("assessment", item)}
+                    />
+                    <IconButton
+                      icon="trash"
+                      label="حذف ارزیابی"
+                      danger
+                      onClick={() => app.remove("assessment", item)}
+                    />
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <Empty
+          icon="clipboard"
+          title="هنوز آزمون یا تمرینی ثبت نشده"
+          description="آیتم جدیدی با بارم دلخواه برای این پودمان بسازید."
+          action={
+            components.length ? (
+              <Button icon="plus" onClick={() => app.open("assessment")}>
+                تعریف ارزیابی
+              </Button>
+            ) : null
+          }
+        />
       )}
     </>
   );

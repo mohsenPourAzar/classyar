@@ -1,11 +1,11 @@
-import { Icon, IconButton, Button, PageHeading, Empty } from "../ui.jsx";
+import { Icon, IconButton, Button, PageHeading, Empty, Badge } from "../ui.jsx";
 import { fmt } from "../../lib/format.mjs";
 export default function Classes({ app }) {
   return (
     <>
       <PageHeading
-        title="کلاس‌های من"
-        description="برای هر پایه یا درس، کلاس مستقلی تعریف کنید."
+        title="مدیریت کلاس‌ها"
+        description="مشخصات کلاس‌ها و فهرست دانش‌آموزان هر کلاس را مدیریت کنید."
       >
         <Button icon="plus" onClick={() => app.open("class")}>
           کلاس جدید
@@ -14,7 +14,10 @@ export default function Classes({ app }) {
       {app.state.db.classes.length ? (
         <div className="grid-3">
           {app.state.db.classes.map((item) => (
-            <article className="card class-card" key={item.id}>
+            <article
+              className={`card class-card ${item.id === app.state.classId ? "is-current-class" : ""}`}
+              key={item.id}
+            >
               <div className="class-card-top">
                 <span
                   className="class-icon"
@@ -22,9 +25,14 @@ export default function Classes({ app }) {
                 >
                   <Icon name="home" size={23} />
                 </span>
-                <span className="grade-chip">
-                  پایه {fmt(Number(item.grade))}
-                </span>
+                <div className="class-card-badges">
+                  {item.id === app.state.classId && (
+                    <Badge kind="brand">کلاس جاری</Badge>
+                  )}
+                  <span className="grade-chip">
+                    پایه {fmt(Number(item.grade))}
+                  </span>
+                </div>
               </div>
               <h3 className="class-card-title">{item.name}</h3>
               <p className="class-card-desc">
@@ -52,13 +60,11 @@ export default function Classes({ app }) {
               </div>
               <div className="class-actions">
                 <Button
-                  icon={item.id === app.state.classId ? "check" : "arrow"}
-                  variant={
-                    item.id === app.state.classId ? "secondary" : "primary"
-                  }
-                  onClick={() => app.changeClass(item.id)}
+                  icon="users"
+                  aria-label={`دانش‌آموزان ${item.name}`}
+                  onClick={() => app.changeClass(item.id, "students")}
                 >
-                  {item.id === app.state.classId ? "کلاس فعال" : "ورود به کلاس"}
+                  مشاهدهٔ دانش‌آموزان
                 </Button>
                 <IconButton
                   icon="edit"

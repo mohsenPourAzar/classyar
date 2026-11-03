@@ -1,0 +1,44 @@
+.brand-mark {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.brand-symbol.brand-mark {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: none;
+  box-shadow: 0 6px 18px #5864d12b;
+}
+.header-brand-mark {
+  width: 32px;
+  height: 32px;
+}
+.assistant-emblem.brand-emblem {
+  background: transparent;
+  border-radius: 0;
+}
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+}
+@media (max-width: 750px) {
+  .header-brand-mark {
+    width: 28px;
+    height: 28px;
+  }
+}
+@media (max-height: 850px) {
+  .footer {
+    display: none;
+  }
+}
+@media print {
+  .footer {
+    display: none;
+  }
+}

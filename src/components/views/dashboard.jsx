@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { Icon, Button, Stat, Badge, WeightBar } from "../ui.jsx";
 import { fmt } from "../../lib/format.mjs";
 import { attendanceStats, moduleWeight } from "../../lib/classroom/logic.mjs";
@@ -14,6 +15,31 @@ export default function Dashboard({ app }) {
         .length,
     })),
     max = Math.max(1, ...counts.map((item) => item.count));
+  const moduleList = useRef(null);
+  const [page, setPage] = useState(0),
+    [pageSize, setPageSize] = useState(3);
+  useLayoutEffect(() => {
+    const node = moduleList.current;
+    if (!node) return;
+    const resize = () => {
+      const rowHeight =
+        Number.parseFloat(
+          getComputedStyle(node).getPropertyValue("--module-row-height"),
+        ) || 64;
+      setPageSize(Math.max(1, Math.floor(node.clientHeight / rowHeight)));
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  useLayoutEffect(() => setPage(0), [app.state.classId]);
+  const pages = Math.max(1, Math.ceil(app.modules.length / pageSize));
+  const currentPage = Math.min(page, pages - 1);
+  const visibleModules = app.modules.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize,
+  );
   const shortcuts = [
     ["users", "افزودن دانش‌آموز", () => app.open("student")],
     ["calendar", "ثبت حضور و غیاب", () => app.go("attendance")],
@@ -104,7 +130,7 @@ export default function Dashboard({ app }) {
         />
       </div>
       <div className="dashboard-layout">
-        <section className="card card-pad">
+        <section className="card card-pad dashboard-modules">
           <div className="section-head">
             <div>
               <h3 className="card-title">پودمان‌های کلاس</h3>
@@ -118,49 +144,82 @@ export default function Dashboard({ app }) {
               مدیریت پودمان‌ها ‹
             </button>
           </div>
-          {app.modules.length ? (
-            app.modules.map((module) => {
-              const components = db.components.filter(
-                  (item) => item.moduleId === module.id,
-                ),
-                weight = moduleWeight(db, module.id);
-              return (
-                <button
-                  type="button"
-                  className="module-row module-link"
-                  key={module.id}
-                  onClick={() => {
-                    app.setState({ moduleId: module.id, gradeScope: "module" });
-                    app.go("grades");
-                  }}
-                >
-                  <span className="module-index">{fmt(module.order)}</span>
-                  <div className="row-grow">
-                    <strong>{module.name}</strong>
-                    <p className="mini-muted">
-                      {fmt(components.length)} بخش نمره‌دهی · مجموع{" "}
-                      {fmt(weight)} نمره
-                    </p>
-                    <WeightBar components={components} />
-                  </div>
-                  <Badge
-                    kind={Math.abs(weight - 20) < 0.001 ? "success" : "warning"}
+          <div className="dashboard-module-list" ref={moduleList}>
+            {app.modules.length ? (
+              visibleModules.map((module) => {
+                const components = db.components.filter(
+                    (item) => item.moduleId === module.id,
+                  ),
+                  weight = moduleWeight(db, module.id);
+                return (
+                  <button
+                    type="button"
+                    className="module-row module-link"
+                    key={module.id}
+                    onClick={() => {
+                      app.setState({
+                        moduleId: module.id,
+                        gradeScope: "module",
+                      });
+                      app.go("grades");
+                    }}
                   >
-                    {Math.abs(weight - 20) < 0.001 ? "فعال" : "تنظیم بارم"}
-                  </Badge>
-                </button>
-              );
-            })
-          ) : (
-            <div className="empty">
-              <p>هنوز پودمانی تعریف نشده است.</p>
-              <Button icon="plus" onClick={() => app.open("module")}>
-                ایجاد پودمان
-              </Button>
+                    <span className="module-index">{fmt(module.order)}</span>
+                    <div className="row-grow">
+                      <strong>{module.name}</strong>
+                      <p className="mini-muted">
+                        {fmt(components.length)} بخش نمره‌دهی · مجموع{" "}
+                        {fmt(weight)} نمره
+                      </p>
+                      <WeightBar components={components} />
+                    </div>
+                    <Badge
+                      kind={
+                        Math.abs(weight - 20) < 0.001 ? "success" : "warning"
+                      }
+                    >
+                      {Math.abs(weight - 20) < 0.001 ? "فعال" : "تنظیم بارم"}
+                    </Badge>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="empty">
+                <p>هنوز پودمانی تعریف نشده است.</p>
+                <Button icon="plus" onClick={() => app.open("module")}>
+                  ایجاد پودمان
+                </Button>
+              </div>
+            )}
+          </div>
+          {pages > 1 && (
+            <div
+              className="dashboard-pagination"
+              aria-label="صفحه‌بندی پودمان‌ها"
+            >
+              <button
+                type="button"
+                disabled={currentPage === 0}
+                onClick={() => setPage(currentPage - 1)}
+                aria-label="پودمان‌های قبلی"
+              >
+                ‹ قبلی
+              </button>
+              <span aria-live="polite">
+                {fmt(currentPage + 1)} از {fmt(pages)}
+              </span>
+              <button
+                type="button"
+                disabled={currentPage === pages - 1}
+                onClick={() => setPage(currentPage + 1)}
+                aria-label="پودمان‌های بعدی"
+              >
+                بعدی ›
+              </button>
             </div>
           )}
         </section>
-        <section className="card card-pad">
+        <section className="card card-pad dashboard-shortcuts">
           <div className="section-head">
             <div>
               <h3 className="card-title">دسترسی سریع</h3>

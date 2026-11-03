@@ -15,7 +15,7 @@ export default function Assistant() {
         title="گفتگو با دستیار"
         description="سؤال‌های خود را بنویسید یا پیام صوتی بفرستید؛ گفتگو و درخواست‌های کلاس در یکجا."
       >
-        <Button icon="mic" onClick={() => assistant.setExpanded(true)}>
+        <Button icon="mic" onClick={assistant.startLive}>
           دستیار صوتی زنده
         </Button>
         <Button
@@ -126,9 +126,7 @@ export default function Assistant() {
           <MessageList />
           <ChatComposer />
           <p className="chat-privacy">
-            محتوای گفتگو برای پاسخ‌گویی به Google ارسال و متن آن در MongoDB
-            نگهداری می‌شود. برای مکالمهٔ پیوسته با صدا از دکمهٔ شناور «گفتگوی
-            زنده» استفاده کنید.
+            گفتگو با Google پردازش و در MongoDB نگهداری می‌شود.
           </p>
         </section>
       </div>

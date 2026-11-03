@@ -1,3 +1,5 @@
+<p align="center"><img src="public/brand/classyar-mark.svg" width="80" height="80" alt="Classyar logo" /></p>
+
 # Classyar | کلاس‌یار
 
 **A Persian classroom manager for attendance, modular assessment, and grade reporting, built with Next.js and MongoDB.**
@@ -14,6 +16,16 @@ Classyar helps teachers organize classes, maintain student rosters, record atten
 - **MongoDB persistence:** store every classroom record, with atomic saves and revision checks.
 - **Appearance:** light/dark themes with Parastoo as the fixed Persian font.
 - **Persistence:** MongoDB storage for classroom records and chat history, with browser recovery for pending edits.
+
+## Brand assets
+
+The Classyar mark combines an open book, a check mark, and a progress motif. The vector source is `public/brand/classyar-mark.svg`; the same mark is used throughout the interface, in this README, and in the browser's SVG and multi-resolution ICO icons. An Apple touch icon and 192px/512px PNG versions are included. Next.js publishes the tab and touch icons from `src/app/icon.svg`, `src/app/favicon.ico`, and `src/app/apple-icon.png`.
+
+## Classroom workflow
+
+Use **Class management** to create, edit, or delete classes. Each class card opens that class's student roster directly; creating a class also takes you to its empty roster so you can add students next.
+
+The class selector above classroom pages changes the working class while keeping the current section open. Switching classes clears the previous class's module, session, assessment, search, and report scope. The last selected class is remembered on the device. Selecting the same class preserves its current selections. Class management shows all classes, so it does not display the classroom-specific selector.
 
 ## Stack
 
@@ -112,6 +124,10 @@ scripts/                  Next.js launcher and database check
 tests/                    Unit and MongoDB integration tests
 ```
 
+## Brand assets
+
+The Classyar mark combines an open book, a check mark, and a progress motif. The vector source is `public/brand/classyar-mark.svg`; the same mark is used throughout the interface, in this README, and in the browser's SVG and multi-resolution ICO icons. An Apple touch icon and 192px/512px PNG versions are included. Next.js publishes the tab and touch icons from `src/app/icon.svg`, `src/app/favicon.ico`, and `src/app/apple-icon.png`.
+
 ## Classroom workflow
 
 1. Create a class and add its students individually or in bulk.
@@ -187,7 +203,9 @@ GEMINI_LIVE_MODEL=gemini-3.8-live
 
 Keep this key server-side. Never put it in source code, browser settings, or a `NEXT_PUBLIC_` variable. Rotate any key shared in a conversation or public location. You can choose another Gemini model that supports audio input and structured JSON output.
 
-The floating **گفتگوی زنده** button is available on every page. Open it, select the session and assessment when relevant, and start a continuous voice conversation. Gemini Live streams microphone audio and spoken replies over WebSocket, with live transcripts, interruption support, mute and stop controls. Navigation between app sections preserves the active call. Minimizing the panel keeps a visible active-call indicator and stop button. Switching classes invalidates pending previews and refreshes the classroom context while keeping the call connected. Drag the move handle in the panel header or beside the collapsed launcher to reposition it with a mouse or touch. Arrow keys also move it, Home or a double-click resets it, and the position stays within the viewport and is remembered locally. Saying **خداحافظ** ends the connection and releases the microphone immediately. Each connection lasts up to 15 minutes; start a new one to continue.
+The floating voice icon is available on every page. One click opens the compact panel and starts a continuous voice conversation when the assistant and database are ready. The panel shows brief transcripts, microphone controls, and a button to delete the current conversation's history. Full text chat and conversation history are available on the assistant page.
+
+Gemini Live streams microphone audio and spoken replies over WebSocket, with interruption support, mute, and stop controls. Closing the panel or navigating between sections keeps the call connected; reopening it resumes the same session without another greeting. Hold and drag the icon, or use the handle in the panel header, to move it with a mouse or touch. Arrow keys also move it, Home resets it, and its position is remembered locally and kept within the visible viewport. Switching classes refreshes the classroom context while keeping the call connected. Saying **خداحافظ** ends the connection and releases the microphone immediately. Each connection lasts up to 15 minutes; start a new one to continue.
 
 The **گفتگو با دستیار** page is a chatbot for general questions and classroom requests. It accepts text and voice messages of up to one minute, uses recent conversation history for follow-ups, and shares messages with the floating panel. Examples:
 

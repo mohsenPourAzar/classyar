@@ -893,3 +893,22 @@ textarea {
     color: #111;
   }
 }
+
+.class-card.is-current-class {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--border));
+}
+.class-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.class-card-badges .grade-chip {
+  height: auto;
+  min-height: 28px;
+  border-radius: 9px;
+  padding: 4px 9px;
+}
+.class-card .class-actions .button {
+  flex: 1;
+  font-size: 11px;
+}

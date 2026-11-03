@@ -1,0 +1,920 @@
+@media screen {
+  .main,
+  .heading-group,
+  .heading-group > div,
+  .context-controls,
+  .toolbar > div,
+  .table-top > div,
+  .filter-card > div,
+  .row-grow,
+  .class-meta,
+  .class-actions,
+  .module-heading {
+    min-width: 0;
+  }
+  .heading-group {
+    flex: 1;
+  }
+  .heading-group > div {
+    overflow: hidden;
+  }
+  .heading-title,
+  .heading-eyebrow {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .topbar {
+    gap: 16px;
+  }
+  .top-actions {
+    flex-shrink: 0;
+  }
+  .class-context {
+    gap: 12px;
+  }
+  .context-label {
+    flex-shrink: 0;
+  }
+  .context-controls {
+    flex: 0 1 360px;
+  }
+  .context-controls .select-control {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+  }
+  .context-controls > .button {
+    flex-shrink: 0;
+  }
+  .view-viewport {
+    container-name: workspace;
+    scrollbar-width: thin;
+  }
+  .view-viewport:not(.view-dashboard) {
+    container-type: inline-size;
+  }
+  .toolbar,
+  .table-top {
+    gap: 12px;
+  }
+  .toolbar > div:first-child {
+    flex: 1 1 250px;
+  }
+  .toolbar-actions {
+    min-width: 0;
+    max-width: 100%;
+    gap: 8px;
+  }
+  .toolbar-actions .button {
+    min-width: 0;
+  }
+  .button > span {
+    overflow-wrap: anywhere;
+  }
+  .class-card-title,
+  .card-title,
+  .card-subtitle,
+  .class-card-desc,
+  .table-title,
+  .table-info,
+  .section-sub,
+  .module-part .row-grow {
+    overflow-wrap: anywhere;
+  }
+  .view-classes > .grid-3 {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    grid-auto-rows: max-content;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .view-modules > .grid-2,
+  .assessments-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
+    grid-auto-rows: max-content;
+    align-items: start;
+  }
+  .class-card {
+    height: auto;
+    min-height: 250px;
+    padding: clamp(16px, 2vw, 22px);
+  }
+  .class-card > * {
+    flex-shrink: 0;
+  }
+  .class-card-title {
+    line-height: 1.8;
+  }
+  .class-meta {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    margin-top: auto;
+    padding-top: 8px;
+  }
+  .class-actions {
+    margin-top: 0;
+  }
+  .class-actions .subaction {
+    flex-shrink: 0;
+  }
+  .class-card-badges {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .module-card {
+    padding: clamp(16px, 2vw, 22px);
+  }
+  .module-ordinal,
+  .assessment-symbol,
+  .part-dot,
+  .part-weight {
+    flex-shrink: 0;
+  }
+  .module-part .row-grow {
+    font-weight: 600;
+  }
+  .module-part .subaction {
+    flex-shrink: 0;
+  }
+  .assessment-card {
+    min-width: 0;
+  }
+  .assessment-actions {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .assessment-actions .button[aria-pressed="true"] {
+    background: var(--brand);
+    color: #fff;
+  }
+  .assessment-card.is-selected {
+    border-color: var(--brand);
+  }
+  .score-panel {
+    scroll-margin-block: 12px;
+  }
+  .view-students,
+  .view-attendance {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+  .view-students > .card,
+  .view-attendance > .card {
+    flex: 1 0 290px;
+    min-height: 290px;
+  }
+  .view-students .table-top {
+    flex-wrap: wrap;
+    padding: 16px 18px;
+    min-height: 0;
+  }
+  .view-students .table-top > div {
+    flex: 1 1 170px;
+  }
+  .view-students .search {
+    flex: 1 1 200px;
+    min-width: 0;
+    max-width: 360px;
+  }
+  .person {
+    min-width: 140px;
+    max-width: 260px;
+    white-space: normal;
+  }
+  .person-initial {
+    flex-shrink: 0;
+  }
+  .person > span:last-child {
+    overflow-wrap: anywhere;
+  }
+  .students-table td:nth-child(4) {
+    white-space: normal;
+    min-width: 150px;
+    max-width: 300px;
+    overflow-wrap: anywhere;
+  }
+  .sessions-strip {
+    flex-shrink: 0;
+    scrollbar-width: thin;
+  }
+  .session-tab {
+    flex: 0 0 170px;
+    min-width: 0;
+  }
+  .session-tab strong {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.8;
+  }
+  .attendance-session-picker {
+    display: none;
+    flex-shrink: 0;
+    margin-bottom: 10px;
+  }
+  .attendance-session-picker .select-control {
+    width: 100%;
+    min-width: 0;
+  }
+  .view-attendance .table-top {
+    padding: 14px 18px;
+    min-height: 0;
+    flex-wrap: wrap;
+  }
+  .view-attendance .table-top > div:first-child {
+    flex: 1 1 220px;
+  }
+  .view-attendance .table-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .view-attendance .table-info {
+    line-height: 1.8;
+  }
+  .attendance-summary {
+    gap: 6px;
+    padding: 0 18px 12px;
+  }
+  .grade-report-page .filters {
+    width: 100%;
+  }
+  .grade-report-page .filters > label {
+    flex: 1 1 230px;
+  }
+  .grade-report-page .filters .select-control {
+    flex: 1;
+    min-width: 0;
+  }
+  .formal-report.report-final .formal-table {
+    table-layout: fixed;
+  }
+  .formal-report.report-final .formal-table th,
+  .formal-report.report-final .formal-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .formal-report.report-final .formal-table th:last-child {
+    width: 34%;
+  }
+  .grade-report-page .report-note {
+    font-size: 11px;
+    line-height: 1.9;
+  }
+  .assistant-chat-page {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+  .chat-workspace {
+    flex: 1 0 320px;
+    min-height: 320px;
+  }
+  .chat-workspace .assistant-chat-shell {
+    min-height: 0;
+  }
+  .chat-workspace .chat-messages {
+    min-height: 70px;
+  }
+  .chat-composer textarea {
+    min-height: 32px;
+    max-height: 120px;
+    resize: none;
+  }
+  .chat-privacy {
+    line-height: 1.8;
+  }
+  .chat-scope-card summary strong {
+    flex-shrink: 0;
+  }
+  .chat-scope-card summary > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chat-history-list {
+    scrollbar-width: thin;
+  }
+  .chat-history-entry {
+    max-width: 100%;
+  }
+  .dialog-overlay {
+    z-index: 150;
+    padding: 16px;
+  }
+  .dialog {
+    width: min(560px, 100%);
+    max-height: calc(100dvh - 32px);
+  }
+  .dialog-head {
+    flex-shrink: 0;
+    gap: 12px;
+  }
+  .dialog-head > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .dialog-head .subaction {
+    flex-shrink: 0;
+  }
+  .dialog form {
+    flex: 1;
+  }
+  .dialog-body {
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
+  .dialog-foot {
+    flex-wrap: wrap;
+  }
+  .field {
+    min-width: 0;
+  }
+  .field input,
+  .field textarea {
+    max-width: 100%;
+  }
+  .empty {
+    min-width: 0;
+  }
+  .view-viewport > .empty {
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .floating-voice-panel {
+    max-height: calc(var(--voice-viewport-height, 100dvh) - 96px);
+  }
+  .floating-voice-heading,
+  .floating-voice-footer {
+    flex-shrink: 0;
+  }
+  .floating-voice-body {
+    scrollbar-width: thin;
+  }
+  .toast {
+    max-width: min(420px, calc(100vw - 24px));
+    overflow-wrap: anywhere;
+  }
+}
+@media screen and (max-width: 1024px) {
+  .sidebar {
+    width: min(280px, calc(100vw - 52px));
+    transform: translateX(105%);
+    transition: transform 0.2s;
+  }
+  .sidebar.open {
+    transform: none;
+  }
+  .sidebar-backdrop.visible {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: #0008;
+    z-index: 14;
+  }
+  .main {
+    margin-right: 0;
+  }
+  .menu-toggle {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+  .topbar {
+    padding-inline: 18px;
+  }
+  .heading-group {
+    gap: 10px;
+  }
+  .heading-eyebrow {
+    max-width: none;
+  }
+}
+@container workspace (max-width: 650px) {
+  .toolbar {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .toolbar > div:first-child {
+    flex-basis: 100%;
+  }
+  .toolbar-actions {
+    width: 100%;
+  }
+  .toolbar-actions > .button {
+    flex: 1 1 auto;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+  .section-name {
+    font-size: 18px;
+    line-height: 1.7;
+  }
+  .section-sub {
+    font-size: 11px;
+    line-height: 1.9;
+  }
+  .filter-card {
+    padding: 14px;
+    gap: 12px;
+  }
+  .filter-card .filters {
+    gap: 12px;
+  }
+  .module-heading {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .module-heading .card-title {
+    font-size: 14px;
+  }
+  .module-ordinal {
+    width: 36px;
+    height: 36px;
+    font-size: 17px;
+  }
+  .module-part {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) auto 36px 36px;
+    gap: 6px;
+    padding-block: 10px;
+  }
+  .module-part .subaction {
+    width: 36px;
+    height: 36px;
+  }
+  .module-part .part-weight {
+    padding-inline: 6px;
+    font-size: 10px;
+  }
+  .assessment-card {
+    padding: 16px;
+    gap: 10px;
+  }
+  .assessment-symbol {
+    width: 36px;
+    height: 36px;
+  }
+  .assessment-card .card-title {
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .assessment-actions .subaction {
+    width: 36px;
+    height: 36px;
+  }
+  .sessions-strip {
+    display: none;
+  }
+  .attendance-session-picker {
+    display: block;
+  }
+  .view-attendance .table-top > div:first-child {
+    flex-basis: 100%;
+  }
+  .view-attendance .table-title {
+    font-size: 12px;
+  }
+  .view-attendance .table-info {
+    font-size: 10px;
+  }
+  .view-attendance .toolbar-actions {
+    width: auto;
+  }
+  .view-attendance .toolbar-actions .button {
+    flex: 0 1 auto;
+    font-size: 10px;
+    min-height: 36px;
+  }
+  .view-attendance .status-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+    min-width: 0;
+  }
+  .attendance-table {
+    table-layout: fixed;
+    white-space: normal;
+  }
+  .attendance-table th:first-child,
+  .attendance-table td:first-child {
+    display: none;
+  }
+  .attendance-table th:nth-child(2),
+  .attendance-table td:nth-child(2) {
+    width: 40%;
+    min-width: 0;
+  }
+  .attendance-table .person {
+    min-width: 0;
+    font-size: 11px;
+  }
+  .attendance-table .person-initial {
+    display: none;
+  }
+  .attendance-table .status-option {
+    min-width: 0;
+    min-height: 34px;
+    padding: 4px;
+  }
+  .attendance-table th,
+  .attendance-table td {
+    padding: 9px;
+  }
+  .grade-report-page .toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grade-report-page .toolbar-actions .button {
+    width: 100%;
+    font-size: 11px;
+  }
+  .grade-report-page .filters > label {
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    flex-basis: 100%;
+  }
+  .grade-report-page .report-note {
+    padding: 10px 12px;
+    font-size: 10px;
+  }
+  .chat-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media screen and (max-width: 750px) {
+  .topbar {
+    min-height: 62px;
+    height: 62px;
+    gap: 8px;
+    padding-inline: 14px;
+  }
+  .heading-title {
+    font-size: 15px;
+  }
+  .heading-eyebrow {
+    font-size: 9px;
+  }
+  .heading-group {
+    gap: 8px;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+  .class-context {
+    padding: 9px 12px;
+    margin-bottom: 10px;
+  }
+  .context-label {
+    font-size: 10px;
+    gap: 6px;
+  }
+  .context-controls {
+    flex-basis: 220px;
+    gap: 6px;
+  }
+  .context-controls .select-trigger {
+    min-height: 40px;
+    padding-inline: 10px;
+    gap: 7px;
+    font-size: 11px;
+  }
+  .button.icon-only {
+    width: 38px;
+    min-height: 40px;
+    padding-inline: 0;
+  }
+  .content {
+    padding: 10px 12px 8px;
+  }
+  .search input,
+  .field input:not([type="color"]),
+  .field textarea,
+  .chat-composer textarea {
+    font-size: 16px;
+  }
+  .grades-input {
+    font-size: 16px;
+    width: 84px;
+    min-height: 42px;
+  }
+  .chat-workspace {
+    gap: 8px;
+    min-height: 360px;
+    flex-basis: 360px;
+  }
+  .chat-history-panel {
+    max-height: 56px;
+    padding: 4px;
+  }
+  .chat-history-list {
+    min-height: 42px;
+  }
+  .chat-history-list button {
+    padding-block: 4px;
+  }
+  .chat-history-list button small {
+    display: none;
+  }
+  .chat-composer {
+    margin-inline: 10px;
+    padding: 10px;
+  }
+  .chat-composer-actions {
+    margin-top: 7px;
+  }
+  .chat-workspace .chat-privacy {
+    font-size: 9px;
+    padding: 6px 10px;
+  }
+  .floating-voice-button {
+    width: 52px;
+    height: 52px;
+  }
+  .voice-wave-mark {
+    transform: scale(0.85);
+  }
+  .floating-voice-panel {
+    max-width: calc(100vw - 24px);
+  }
+  .dialog-overlay {
+    padding: 10px;
+  }
+  .dialog {
+    border-radius: 16px;
+    max-height: calc(100dvh - 20px);
+  }
+  .dialog-head {
+    padding: 14px 16px;
+  }
+  .dialog-body {
+    padding: 14px 16px 4px;
+  }
+  .dialog-foot {
+    padding: 10px 16px;
+    gap: 8px;
+  }
+  .dialog-foot .button {
+    flex: 1;
+    font-size: 11px;
+  }
+  .field {
+    margin-bottom: 12px;
+  }
+  .form-grid {
+    gap: 0 12px;
+  }
+}
+@media screen and (max-height: 700px) {
+  .view-assistant .section-sub {
+    display: none;
+  }
+  .chat-workspace {
+    min-height: 360px;
+    flex-basis: 360px;
+  }
+  .chat-scope-card {
+    max-height: 120px;
+  }
+  .chat-workspace .chat-composer {
+    padding: 8px 10px;
+  }
+}
+@media screen and (max-height: 540px) {
+  .topbar {
+    height: 56px;
+    min-height: 56px;
+  }
+  .topbar .heading-eyebrow {
+    display: none;
+  }
+  .content {
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+  .class-context {
+    padding-block: 5px;
+    margin-bottom: 8px;
+  }
+  .class-context .select-trigger {
+    min-height: 36px;
+    padding-block: 6px;
+  }
+  .toolbar {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .toolbar .section-sub {
+    display: none;
+  }
+  .section-name {
+    font-size: 17px;
+  }
+  .sessions-strip {
+    display: none;
+  }
+  .attendance-session-picker {
+    display: block;
+  }
+  .sidebar {
+    padding-block: 10px;
+  }
+  .brand {
+    padding-bottom: 10px;
+  }
+  .sidebar .nav-label {
+    margin-top: 0;
+    padding-block: 5px;
+  }
+  .sidebar .nav-btn {
+    min-height: 36px;
+    padding-block: 7px;
+  }
+  .sidebar-bottom {
+    padding-top: 10px;
+  }
+  .dialog-head {
+    padding-block: 10px;
+  }
+  .dialog-head p {
+    display: none;
+  }
+  .dialog-foot {
+    padding-block: 8px;
+  }
+}
+@media screen and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .class-card,
+  .module-card,
+  .assessment-card,
+  .shortcut {
+    transition:
+      border-color 0.18s,
+      box-shadow 0.18s,
+      background 0.18s;
+  }
+  .class-card:hover,
+  .module-card:hover,
+  .assessment-card:hover {
+    border-color: color-mix(in srgb, var(--brand) 35%, var(--border));
+    box-shadow: 0 6px 20px #19243b0b;
+  }
+}
+@media screen and (pointer: coarse) {
+  .subaction {
+    min-width: 36px;
+    min-height: 36px;
+  }
+  .select-trigger {
+    min-height: 44px;
+  }
+  .select-option {
+    min-height: 44px;
+  }
+}
+
+@media screen {
+  .view-classes > .grid-3,
+  .view-modules > .grid-2 {
+    padding-bottom: 72px;
+  }
+  .view-students .table-wrap,
+  .view-attendance .table-wrap {
+    padding-bottom: 64px;
+  }
+  .view-assessments {
+    padding-bottom: 72px;
+  }
+  .view-assessments .score-panel {
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+  .view-assessments .score-panel .table-wrap {
+    max-height: max(180px, 48dvh);
+    padding-bottom: 20px;
+  }
+}
+@media screen and (max-width: 750px) {
+  .dashboard-page .shortcuts {
+    padding-inline-end: 54px;
+  }
+}
+
+@media screen {
+  .floating-assistant {
+    max-width: calc(var(--voice-viewport-width, 100vw) - 16px);
+  }
+  .floating-voice-panel {
+    max-width: calc(var(--voice-viewport-width, 100vw) - 24px);
+  }
+}
+
+@media screen {
+  .view-attendance > .card {
+    flex-basis: 340px;
+    min-height: 340px;
+  }
+}
+@container workspace (max-width: 650px) {
+  .view-attendance .table-info {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media screen {
+  .score-panel .table-top {
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    gap: 10px;
+    padding: 14px 16px;
+    min-height: 0;
+  }
+  .score-panel .table-top > div {
+    flex: 1;
+    min-width: 0;
+  }
+  .score-panel .table-top > .subaction {
+    flex-shrink: 0;
+  }
+  .view-viewport > .empty {
+    flex: 1 1 180px;
+    min-height: 0;
+    padding: clamp(16px, 4vh, 48px) 16px;
+    overflow-y: auto;
+  }
+  .view-dashboard > .empty {
+    flex: 1;
+    padding: 16px;
+    overflow: clip;
+  }
+  .view-students > .card > .empty {
+    flex: 1;
+    min-height: 0;
+    padding: 24px 16px;
+    overflow-y: auto;
+  }
+}
+@container workspace (max-width: 650px) {
+  .score-panel .data-table {
+    table-layout: fixed;
+    white-space: normal;
+  }
+  .score-panel .data-table th:first-child,
+  .score-panel .data-table td:first-child {
+    display: none;
+  }
+  .score-panel .data-table th:nth-child(2) {
+    width: 45%;
+  }
+  .score-panel .data-table th:nth-child(3) {
+    width: 30%;
+  }
+  .score-panel .data-table th:nth-child(4) {
+    width: 25%;
+  }
+  .score-panel .data-table td,
+  .score-panel .data-table th {
+    padding: 9px 7px;
+  }
+  .score-panel .person {
+    min-width: 0;
+    max-width: none;
+  }
+  .score-panel .person-initial {
+    display: none;
+  }
+  .score-panel .grades-input {
+    width: min(84px, 100%);
+  }
+  .score-panel .pill {
+    font-size: 9px;
+    padding-inline: 6px;
+    white-space: nowrap;
+  }
+}
+@media screen and (max-height: 540px) {
+  .empty-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+  }
+  .empty-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+  .view-dashboard > .empty .empty-icon {
+    display: none;
+  }
+  .empty-title {
+    font-size: 14px;
+  }
+  .empty p {
+    margin-block: 6px 10px;
+  }
+}

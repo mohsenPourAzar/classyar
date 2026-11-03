@@ -5,14 +5,20 @@ export default function useFloatingPosition(expanded) {
   const element = useRef(null),
     drag = useRef(null),
     current = useRef(null),
-    frame = useRef(null);
+    frame = useRef(null),
+    suppressClick = useRef(false);
   const [position, setPosition] = useState(null),
     [dragging, setDragging] = useState(false);
   const clamp = (x, y) => {
     const rect = element.current?.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft || 0,
+      top = viewport?.offsetTop || 0;
+    const width = viewport?.width || innerWidth,
+      height = viewport?.height || innerHeight;
     return {
-      x: Math.max(8, Math.min(x, innerWidth - (rect?.width || 0) - 8)),
-      y: Math.max(8, Math.min(y, innerHeight - (rect?.height || 0) - 8)),
+      x: Math.max(left + 8, Math.min(x, left + width - (rect?.width || 0) - 8)),
+      y: Math.max(top + 8, Math.min(y, top + height - (rect?.height || 0) - 8)),
     };
   };
   const place = (value, persist = false) => {
@@ -38,11 +44,35 @@ export default function useFloatingPosition(expanded) {
         place(saved);
     } catch {}
     const resize = () => {
+      const node = element.current;
+      if (!node) return;
+      node.style.setProperty(
+        "--voice-viewport-height",
+        `${window.visualViewport?.height || innerHeight}px`,
+      );
+      node.style.setProperty(
+        "--voice-viewport-width",
+        `${window.visualViewport?.width || innerWidth}px`,
+      );
       if (current.current) place(current.current, true);
+      else {
+        const rect = node.getBoundingClientRect(),
+          next = clamp(rect.left, rect.top);
+        if (Math.abs(next.x - rect.left) > 1 || Math.abs(next.y - rect.top) > 1)
+          place(next);
+      }
     };
+    resize();
+    const observer = new ResizeObserver(resize);
+    if (element.current) observer.observe(element.current);
     window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("scroll", resize);
     return () => {
+      observer.disconnect();
       window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("scroll", resize);
       if (frame.current) cancelAnimationFrame(frame.current);
     };
   }, []);
@@ -50,14 +80,16 @@ export default function useFloatingPosition(expanded) {
     if (current.current) place(current.current, true);
   }, [expanded]);
   const finish = (event) => {
-    if (drag.current?.id !== event.pointerId) return;
+    const start = drag.current;
+    if (start?.id !== event.pointerId) return;
+    suppressClick.current = start.moved || event.type === "pointercancel";
     drag.current = null;
     setDragging(false);
     if (frame.current) {
       cancelAnimationFrame(frame.current);
       frame.current = null;
     }
-    if (current.current) place(current.current, true);
+    if (start.moved && current.current) place(current.current, true);
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId);
   };
@@ -66,24 +98,29 @@ export default function useFloatingPosition(expanded) {
       if (event.button !== 0 || !event.isPrimary) return;
       event.preventDefault();
       const rect = element.current.getBoundingClientRect();
+      suppressClick.current = false;
       drag.current = {
         id: event.pointerId,
         x: event.clientX,
         y: event.clientY,
         left: rect.left,
         top: rect.top,
+        moved: false,
       };
       event.currentTarget.setPointerCapture(event.pointerId);
       event.currentTarget.focus();
-      setDragging(true);
     },
     onPointerMove: (event) => {
       const start = drag.current;
       if (!start || start.id !== event.pointerId) return;
-      current.current = clamp(
-        start.left + event.clientX - start.x,
-        start.top + event.clientY - start.y,
-      );
+      const dx = event.clientX - start.x,
+        dy = event.clientY - start.y;
+      if (!start.moved && Math.hypot(dx, dy) < 6) return;
+      if (!start.moved) {
+        start.moved = true;
+        setDragging(true);
+      }
+      current.current = clamp(start.left + dx, start.top + dy);
       if (!frame.current)
         frame.current = requestAnimationFrame(() => {
           frame.current = null;
@@ -92,9 +129,15 @@ export default function useFloatingPosition(expanded) {
     },
     onPointerUp: finish,
     onPointerCancel: finish,
-    onLostPointerCapture: () => {
-      drag.current = null;
-      setDragging(false);
+    onLostPointerCapture: (event) => {
+      if (drag.current?.id === event.pointerId) finish(event);
+    },
+    onClickCapture: (event) => {
+      if (suppressClick.current && event.detail !== 0) {
+        suppressClick.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+      }
     },
     onDoubleClick: reset,
     onKeyDown: (event) => {

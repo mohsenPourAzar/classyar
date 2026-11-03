@@ -1,4 +1,7 @@
 "use client";
+import Select from "../select.jsx";
+import BrandMark from "../brand-mark.jsx";
+
 import { useEffect, useRef, useState } from "react";
 import { useAssistant } from "./assistant-provider.jsx";
 import { Button, Icon } from "../ui.jsx";
@@ -24,7 +27,7 @@ export function AssistantScope({ compact = false }) {
       <legend>محدودهٔ کلاس</legend>
       <label>
         پودمان
-        <select
+        <Select
           aria-label="پودمان دستیار"
           value={context.moduleId}
           onChange={(event) =>
@@ -37,11 +40,11 @@ export function AssistantScope({ compact = false }) {
               {item.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label>
         جلسه
-        <select
+        <Select
           aria-label="جلسه دستیار"
           value={context.sessionId}
           onChange={(event) => changeContext({ sessionId: event.target.value })}
@@ -52,11 +55,11 @@ export function AssistantScope({ compact = false }) {
               {item.title} · {item.date}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label>
         آزمون یا تمرین
-        <select
+        <Select
           aria-label="ارزشیابی دستیار"
           value={context.assessmentId}
           onChange={(event) =>
@@ -76,7 +79,7 @@ export function AssistantScope({ compact = false }) {
                 {item.title} (از {fmt(item.maxScore)})
               </option>
             ))}
-        </select>
+        </Select>
       </label>
     </fieldset>
   );
@@ -90,7 +93,11 @@ export function AssistantMessage({ message, compact = false }) {
       data-message-id={message.id}
     >
       <div className="chat-message-by">
-        <Icon name={message.role === "user" ? "user" : "sparkle"} size={15} />
+        {message.role === "user" ? (
+          <Icon name="user" size={15} />
+        ) : (
+          <BrandMark size={18} />
+        )}
         <span>{message.role === "user" ? "شما" : "دستیار کلاس‌یار"}</span>
         {message.source === "live" && <span className="chat-source">زنده</span>}
         {message.source === "audio" && <Icon name="mic" size={12} />}
@@ -151,6 +158,13 @@ export function AssistantMessage({ message, compact = false }) {
 export function ChatComposer({ compact = false }) {
   const assistant = useAssistant(),
     [text, setText] = useState("");
+  const input = useRef(null);
+  useEffect(() => {
+    const node = input.current;
+    if (!node) return;
+    node.style.height = "0px";
+    node.style.height = Math.min(node.scrollHeight, 120) + "px";
+  }, [text]);
   const disabled =
     !assistant.history.ready ||
     assistant.busy ||
@@ -174,6 +188,7 @@ export function ChatComposer({ compact = false }) {
         پیام شما
       </label>
       <textarea
+        ref={input}
         id={compact ? "floating-assistant-input" : "assistant-request"}
         rows={compact ? 1 : 2}
         maxLength={12000}
@@ -288,8 +303,8 @@ export function MessageList({ compact = false }) {
         ))
       ) : (
         <div className="chat-welcome">
-          <span className="assistant-emblem">
-            <Icon name="sparkle" size={28} />
+          <span className="assistant-emblem brand-emblem">
+            <BrandMark size={52} />
           </span>
           <h3>سلام، چطور کمک کنم؟</h3>
           <p>سؤال بپرسید، نمره بخوانید یا حضور و غیاب را به من بسپارید.</p>

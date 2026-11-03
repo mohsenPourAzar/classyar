@@ -1,6 +1,6 @@
 export const nav = [
   ["dashboard", "پیشخوان", "grid"],
-  ["classes", "کلاس‌ها", "layers"],
+  ["classes", "مدیریت کلاس‌ها", "layers"],
   ["students", "دانش‌آموزان", "users"],
   ["attendance", "حضور و غیاب", "calendar"],
   ["modules", "پودمان‌ها", "boxes"],

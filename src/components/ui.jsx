@@ -1,3 +1,4 @@
+import Select from "./select.jsx";
 import { createElement as e } from "react";
 import { cn, fmt } from "../lib/format.mjs";
 const paths = {
@@ -277,7 +278,7 @@ export function FormInput({
           {...props}
         />
       ) : kind === "select" ? (
-        <select
+        <Select
           id={id}
           name={name}
           defaultValue={value ?? ""}
@@ -289,7 +290,7 @@ export function FormInput({
               {option.label}
             </option>
           ))}
-        </select>
+        </Select>
       ) : (
         <input
           id={id}

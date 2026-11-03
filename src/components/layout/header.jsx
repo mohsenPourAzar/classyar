@@ -1,3 +1,4 @@
+import BrandMark from "../brand-mark.jsx";
 import { Icon, syncInfo } from "../ui.jsx";
 import { dateNow } from "../../lib/format.mjs";
 import { nav } from "../navigation.mjs";
@@ -17,10 +18,13 @@ export default function Header({ app }) {
         >
           <Icon name="menu" size={19} />
         </button>
+        <BrandMark size={32} className="header-brand-mark" />
         <div>
           <div className="heading-eyebrow">
             فضای کاری دبیر <span className="breadcrumb-separator">/</span>{" "}
-            {app.selectedClass?.name || "کلاس‌های من"}
+            {app.state.view === "classes"
+              ? "همهٔ کلاس‌ها"
+              : app.selectedClass?.name || "کلاس‌های من"}
           </div>
           <h1 className="heading-title">{title}</h1>
         </div>

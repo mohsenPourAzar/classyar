@@ -11,9 +11,14 @@ export default function ClassroomModal({ app }) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const frame = requestAnimationFrame(() =>
-      dialogRef.current?.querySelector("input,textarea,select")?.focus(),
+      dialogRef.current
+        ?.querySelector(
+          'input:not([type="hidden"]),textarea,button[role="combobox"]',
+        )
+        ?.focus(),
     );
     const onKeyDown = (event) => {
+      if (event.defaultPrevented) return;
       if (event.key === "Escape") {
         event.preventDefault();
         app.close();
@@ -21,7 +26,7 @@ export default function ClassroomModal({ app }) {
       if (event.key !== "Tab") return;
       const controls = [
         ...(dialogRef.current?.querySelectorAll(
-          'button:not([disabled]),input:not([type="hidden"]),textarea,select',
+          'button:not([disabled]),input:not([type="hidden"]),textarea,select:not([aria-hidden="true"])',
         ) || []),
       ];
       const first = controls[0],
@@ -303,7 +308,13 @@ export default function ClassroomModal({ app }) {
           "div",
           null,
           e("h3", null, title),
-          e("p", null, "اطلاعات را تکمیل و ذخیره کنید."),
+          e(
+            "p",
+            null,
+            m.type === "class" && !m.item
+              ? "پس از ساخت کلاس، به فهرست دانش‌آموزان آن می‌روید."
+              : "اطلاعات را تکمیل و ذخیره کنید.",
+          ),
         ),
         e(IconButton, {
           icon: "close",
@@ -322,7 +333,13 @@ export default function ClassroomModal({ app }) {
         e(
           "div",
           { className: "dialog-foot" },
-          e(Button, { type: "submit", icon: "check" }, "ذخیره تغییرات"),
+          e(
+            Button,
+            { type: "submit", icon: "check" },
+            m.type === "class" && !m.item
+              ? "ساخت کلاس و ادامه"
+              : "ذخیره تغییرات",
+          ),
           e(Button, { variant: "ghost", onClick: () => app.close() }, "انصراف"),
         ),
       ),
