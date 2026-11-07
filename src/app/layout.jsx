@@ -6,6 +6,7 @@ import "@/styles/design.css";
 import "@/styles/assistant.css";
 import "@/styles/workspace.css";
 import "@/styles/select.css";
+import "@/styles/persian-date.css";
 import "@/styles/responsive.css";
 import "@/styles/brand.css";
 

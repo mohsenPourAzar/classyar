@@ -1,190 +1,186 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import seed from "../src/lib/classroom/seed.json" with { type: "json" };
-import * as L from "../src/lib/classroom/logic.mjs";
 import * as EX from "../src/lib/classroom/reports.mjs";
-const fresh = () => structuredClone(seed);
-test("module report preserves blanks and 0 and lists all students", () => {
-  const db = fresh();
-  const cid = "class-10",
-    m = "module-10-1",
-    student = db.students.find((s) => s.classId === cid);
-  const a = {
-    id: "test-exam",
-    moduleId: m,
-    componentId: "component-10-exam",
-    title: "آزمون",
-    maxScore: 20,
-  };
-  db.assessments.push(a);
-  db.marks.push({ studentId: student.id, assessmentId: a.id, score: 0 });
-  const report = EX.listRows(db, cid, m);
-  assert.equal(report.rows.length, 24);
-  assert.equal(report.rows[0][3], 0); // zero is an explicit score
-  assert.equal(report.rows[0][report.rows[0].length - 3], ""); // no final score yet
-  assert.equal(report.rows[1][3], ""); // absent mark must stay blank
-  assert.match(report.rows[0][report.rows[0].length - 1], /تمرین‌ها/);
-});
-test("summary report generates independent columns for every module", () => {
-  const db = fresh();
-  db.modules.push({
-    id: "m2",
-    classId: "class-10",
-    order: 2,
-    name: "پودمان دوم",
-  });
-  const report = EX.listRows(db, "class-10", "all");
-  assert.equal(report.rows.length, 24);
-  assert.equal(report.headers.includes("پودمان دوم (از ۲۰)"), true);
-  assert.equal(report.rows[0].at(-3), ""); // incomplete average, not zero
-});
-test("XLSX generated fully offline and CSV emits UTF-8 BOM", () => {
-  const db = fresh();
-  const data = EX.makeXLSX(db, "class-10", "all");
-  assert.equal(data[0], 0x50);
-  assert.equal(data[1], 0x4b);
-  assert.ok(data.length > 12000);
-  assert.equal(
-    EX.makeCSV(EX.listRows(db, "class-10", "all")).charCodeAt(0),
-    0xfeff,
-  );
-});
-
-test("formal exports contain only a plain table and retain every assessment and explicit zero", () => {
-  const db = fresh(),
-    student = db.students[0],
-    moduleId = "module-10-1";
-  db.assessments.push({
-    id: "formal-exam",
-    moduleId,
-    componentId: "component-10-exam",
-    title: "آزمون رسمی",
-    maxScore: 20,
-  });
-  db.marks.push({
-    studentId: student.id,
-    assessmentId: "formal-exam",
-    score: 0,
-  });
-  const final = EX.exportRows(db, "class-10", moduleId, "final");
-  assert.deepEqual(final.headers, ["نام و نام خانوادگی", "نمره نهایی (از ۲۰)"]);
-  assert.deepEqual(final.rows[0], [student.name, ""]);
-  const detailed = EX.exportRows(db, "class-10", moduleId, "detailed");
-  assert.equal(detailed.rows[0][2], 0);
-  assert.equal(detailed.rows[1][2], "");
-  assert.equal(
-    detailed.rows[0][detailed.headers.indexOf("جمع نمرات ثبت‌شده (خام)")],
-    0,
-  );
-  const csv = EX.makeCSV(detailed);
-  assert.equal(csv.split("\r\n").length, detailed.rows.length + 1);
-  assert.ok(csv.startsWith('\ufeff"ردیف"'));
-  assert.ok(!csv.includes("سامانه کلاس‌یار"));
-  const files = unzipStored(EX.makeXLSX(db, "class-10", moduleId, "detailed"));
-  const sheet = files.get("xl/worksheets/sheet1.xml"),
-    styles = files.get("xl/styles.xml");
-  assert.match(sheet, /autoFilter ref="A1:/);
-  assert.ok(!sheet.includes("mergeCell"));
-  assert.ok(!sheet.includes("کلاس‌یار"));
-  assert.equal((sheet.match(/<row /g) || []).length, detailed.rows.length + 1);
-  assert.ok(!styles.includes('patternType="solid"'));
-  assert.ok(
-    [...styles.matchAll(/rgb="([A-F0-9]+)"/g)].every(
-      (match) => match[1] === "FF000000",
-    ),
-  );
-  assert.equal(
-    [...files.keys()].filter((name) => /worksheets\/sheet/.test(name)).length,
-    1,
-  );
-});
-
-test("final report calculates weighted grades and all-module average only when complete; raw sum stays distinct", () => {
-  const db = fresh(),
-    student = db.students[0];
-  db.components = [
-    {
-      id: "formal-component",
-      moduleId: "module-10-1",
-      kind: "assessment",
-      name: "آزمون",
-      weight: 20,
-    },
+const moduleId = "module-10-1",
+  classId = "class-10";
+function fixture() {
+  const db = structuredClone(seed);
+  Object.assign(db.modules[0], { maxScore: 20, attendanceScore: 2 });
+  db.components = [];
+  db.sessions = [
+    { id: "s1", moduleId, classId },
+    { id: "s2", moduleId, classId },
   ];
   db.assessments = [
     {
-      id: "formal-a",
-      moduleId: "module-10-1",
-      componentId: "formal-component",
-      title: "آزمون یک",
-      maxScore: 10,
+      id: "a1",
+      moduleId,
+      category: "practical",
+      title: "عملی ۱",
+      maxScore: 20,
     },
-    {
-      id: "formal-b",
-      moduleId: "module-10-1",
-      componentId: "formal-component",
-      title: "آزمون دو",
-      maxScore: 30,
-    },
+    { id: "a2", moduleId, category: "exercise", title: "تمرین ۱", maxScore: 5 },
+    { id: "a3", moduleId, category: "exercise", title: "تمرین ۲", maxScore: 5 },
+    { id: "a4", moduleId, category: "written", title: "کتبی ۱", maxScore: 10 },
   ];
-  db.marks = [
-    { studentId: student.id, assessmentId: "formal-a", score: 0 },
-    { studentId: student.id, assessmentId: "formal-b", score: 20 },
+  return db;
+}
+function complete(db) {
+  const studentId = db.students[0].id;
+  db.marks = db.assessments.map((a) => ({
+    assessmentId: a.id,
+    studentId,
+    score: a.maxScore * 0.8,
+  }));
+  db.attendance = [
+    { sessionId: "s1", studentId, status: "present" },
+    { sessionId: "s2", studentId, status: "absent" },
   ];
-  assert.equal(EX.exportRows(db, "class-10", "all", "final").rows[0][1], 10);
-  let detailed = EX.exportRows(db, "class-10", "all", "detailed");
+}
+test("detailed report has attendance, activity bonus, exercises, exams and final grade", () => {
+  const db = fixture();
+  complete(db);
+  const report = EX.exportRows(db, classId, moduleId, "detailed");
+  assert.deepEqual(report.headers, [
+    "ردیف",
+    "نام و نام خانوادگی",
+    "حضور و غیاب (از 2)",
+    "نمره اضافی",
+    "تمرین ۱ (از 5)",
+    "تمرین ۲ (از 5)",
+    "عملی ۱ (از 20)",
+    "کتبی ۱ (از 10)",
+    "نمره نهایی (از 20)",
+  ]);
+  assert.deepEqual(report.rows[0], [
+    1,
+    db.students[0].name,
+    1,
+    0,
+    4,
+    4,
+    16,
+    8,
+    15.4,
+  ]);
+  assert.equal(report.rows.length, 24);
+  assert.ok(!report.pendingRows.some((r) => r.row === 0));
+  assert.deepEqual(EX.listRows(db, classId, moduleId).rows, report.rows);
+});
+test("live finals update for missing marks, preserve zero and keep unrecorded marks blank", () => {
+  const db = fixture(),
+    studentId = db.students[0].id;
+  assert.equal(EX.exportRows(db, classId, moduleId).rows[0][1], "");
+  db.marks = [{ assessmentId: "a1", studentId, score: 0 }];
+  let report = EX.exportRows(db, classId, moduleId, "detailed");
+  assert.equal(report.rows[0][2], "");
+  assert.equal(report.rows[0][3], 0);
+  assert.equal(report.rows[0][4], "");
+  assert.equal(report.rows[0][6], 0);
+  assert.equal(report.rows[0].at(-1), 0);
+  assert.ok(report.pendingRows.some((r) => r.row === 0));
+  assert.equal(report.rows[1].at(-1), "");
+  db.marks[0].score = 20;
+  assert.equal(EX.exportRows(db, classId, moduleId).rows[0][1], 9);
+  db.attendance = [{ sessionId: "s1", studentId, status: "present" }];
+  assert.equal(EX.exportRows(db, classId, moduleId).rows[0][1], 11);
+});
+test("reports respect custom module scales and normalize mixed scales for overall averages", () => {
+  const db = fixture();
+  complete(db);
+  Object.assign(db.modules[0], { maxScore: 40, attendanceScore: 4 });
+  assert.equal(EX.exportRows(db, classId, moduleId).rows[0][1], 30.8);
   assert.equal(
-    detailed.rows[0][detailed.headers.indexOf("جمع نمرات ثبت‌شده (خام)")],
-    20,
+    EX.exportRows(db, classId, moduleId).headers[1],
+    "نمره نهایی (از 40)",
   );
   db.modules.push({
-    id: "formal-module2",
-    classId: "class-10",
+    id: "m2",
+    classId,
     name: "پودمان دوم",
     order: 2,
+    maxScore: 10,
+    attendanceScore: 0,
   });
-  assert.equal(EX.exportRows(db, "class-10", "all", "final").rows[0][1], "");
-  db.components.push({
-    id: "formal-c2",
-    moduleId: "formal-module2",
-    kind: "assessment",
-    name: "آزمون",
-    weight: 20,
-  });
+  let report = EX.exportRows(db, classId, "all", "detailed");
+  assert.equal(report.rows[0].at(-1), 15.4);
+  assert.ok(report.pendingRows.some((r) => r.row === 0));
   db.assessments.push({
-    id: "formal-a2",
-    moduleId: "formal-module2",
-    componentId: "formal-c2",
-    title: "آزمون پودمان دوم",
-    maxScore: 20,
+    id: "other",
+    moduleId: "m2",
+    title: "آزمون دوم",
+    maxScore: 10,
   });
   db.marks.push({
-    studentId: student.id,
-    assessmentId: "formal-a2",
-    score: 20,
+    assessmentId: "other",
+    studentId: db.students[0].id,
+    score: 10,
   });
-  assert.equal(EX.exportRows(db, "class-10", "all", "final").rows[0][1], 15);
-  detailed = EX.exportRows(db, "class-10", "all", "detailed");
+  report = EX.exportRows(db, classId, "all", "detailed");
+  assert.equal(report.rows[0].at(-1), 17.7);
   assert.equal(
-    detailed.rows[0][detailed.headers.indexOf("جمع نمرات پودمان‌ها")],
-    30,
-  );
-  assert.ok(
-    detailed.headers.some((header) => header.includes("آزمون پودمان دوم")),
+    report.headers.filter((h) => h.includes("حضور و غیاب")).length,
+    2,
   );
 });
-
-test("CSV and print reports escape untrusted names without extra headings or scripts", () => {
-  const db = fresh();
+test("CSV, print and XLSX use the same simplified columns and calculated grade", () => {
+  const db = fixture();
+  complete(db);
+  const report = EX.exportRows(db, classId, moduleId, "detailed");
+  const csv = EX.makeCSV(report);
+  assert.equal(csv.charCodeAt(0), 0xfeff);
+  assert.equal(csv.split("\r\n").length, 25);
+  assert.ok(csv.includes('"15.4"'));
+  const html = EX.makePrintHTML(report);
+  assert.ok(html.includes("<td>15.4</td>"));
+  assert.ok(!/<h[1-6][\s>]/.test(html));
+  const files = unzipStored(EX.makeXLSX(db, classId, moduleId, "detailed"));
+  assert.match(
+    files.get("xl/worksheets/sheet1.xml"),
+    /<c r="I2"[^>]*><v>15.4<\/v>/,
+  );
+  assert.equal(
+    (files.get("xl/worksheets/sheet1.xml").match(/<row /g) || []).length,
+    25,
+  );
+  assert.ok(!files.get("xl/styles.xml").includes('patternType="solid"'));
+});
+test("export escaping protects spreadsheet formulas and printed names", () => {
+  const db = fixture();
   db.students[0].name = '=HYPERLINK("example")';
-  assert.match(EX.makeCSV(EX.exportRows(db, "class-10")), /'=/);
+  assert.match(EX.makeCSV(EX.exportRows(db, classId)), /'=/);
   db.students[0].name = '<script>alert("x")</script>';
-  const html = EX.makePrintHTML(EX.exportRows(db, "class-10"));
+  const html = EX.makePrintHTML(EX.exportRows(db, classId));
   assert.ok(!html.includes("<script>"));
   assert.ok(html.includes("&lt;script&gt;"));
-  assert.ok(!/<h[1-6][\s>]/.test(html));
 });
 
+test("activity bonus column totals sessions independently and agrees in final, CSV, print and Excel", () => {
+  const db = fixture();
+  complete(db);
+  const studentId = db.students[0].id;
+  db.sessions[0].bonusMarks = [{ studentId, score: 0.5 }];
+  db.sessions[1].bonusMarks = [{ studentId, score: 1.25 }];
+  const report = EX.exportRows(db, classId, moduleId, "detailed");
+  const column = report.headers.indexOf("نمره اضافی");
+  assert.equal(report.rows[0][column], 1.75);
+  assert.equal(report.rows[1][column], 0);
+  assert.equal(report.rows[0][2], 1);
+  assert.equal(report.rows[0].at(-1), 17.15);
+  assert.equal(EX.exportRows(db, classId, moduleId, "final").rows[0][1], 17.15);
+  assert.ok(EX.makeCSV(report).includes('"1.75"'));
+  assert.ok(EX.makePrintHTML(report).includes("<td>1.75</td>"));
+  const files = unzipStored(EX.makeXLSX(db, classId, moduleId, "detailed"));
+  assert.match(
+    files.get("xl/worksheets/sheet1.xml"),
+    /<c r="D2"[^>]*><v>1.75<\/v>/,
+  );
+  assert.match(
+    files.get("xl/worksheets/sheet1.xml"),
+    /<c r="I2"[^>]*><v>17.15<\/v>/,
+  );
+});
 function unzipStored(bytes) {
   const buffer = Buffer.from(bytes),
     files = new Map();

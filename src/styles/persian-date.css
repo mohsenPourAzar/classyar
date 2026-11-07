@@ -1,0 +1,125 @@
+.persian-date-picker {
+  width: 100%;
+  min-width: 0;
+}
+.date-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.date-input-row input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.date-calendar-trigger,
+.date-calendar-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--text);
+}
+.date-calendar-trigger[aria-expanded="true"] {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+.date-calendar-panel {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.date-calendar-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.date-calendar-heading .date-calendar-nav {
+  width: 32px;
+  height: 36px;
+  font-size: 22px;
+}
+.date-calendar-heading select {
+  min-width: 0;
+  flex: 1;
+  height: 36px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text);
+}
+.date-calendar-caption {
+  margin: 8px 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.date-calendar-grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 2px;
+  text-align: center;
+}
+.date-calendar-grid th {
+  height: 28px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.date-calendar-grid td {
+  padding: 0;
+}
+.date-calendar-grid button {
+  width: 100%;
+  min-height: 34px;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+}
+.date-calendar-grid button[aria-current="date"] {
+  border-color: var(--brand);
+}
+.date-calendar-grid td[aria-selected="true"] button {
+  color: white;
+  background: var(--brand);
+}
+.date-calendar-grid button:hover,
+.date-calendar-nav:hover,
+.date-calendar-trigger:hover {
+  background: var(--hover);
+  color: var(--brand);
+}
+.date-calendar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.date-calendar-actions button {
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--brand);
+}
+.date-error {
+  margin: 4px 0;
+  font-size: 11px;
+  color: var(--danger);
+}

@@ -35,17 +35,19 @@ test("Next.js API logic persists every collection, detects conflicts, and surviv
     assert.equal(first.headers.get("etag"), '"0"');
     assert.equal(first.headers.get("cache-control"), "no-store");
     const state = structuredClone(seed);
+    Object.assign(state.modules[0], { maxScore: 40, attendanceScore: 4 });
     state.sessions.push({
       id: "integration-session",
       classId: "class-10",
       moduleId: "module-10-1",
       title: "جلسه آزمایشی",
       date: "۱۴۰۵/۰۸/۱۱",
+      bonusMarks: [{ studentId: state.students[0].id, score: 0.75 }],
     });
     state.assessments.push({
       id: "integration-assessment",
       moduleId: "module-10-1",
-      componentId: "component-10-exam",
+      category: "practical",
       title: "آزمون نمونه",
       maxScore: 20,
     });
@@ -94,6 +96,12 @@ test("Next.js API logic persists every collection, detects conflicts, and surviv
     const restarted = await (await api.read()).json();
     assert.equal(restarted.revision, 1);
     assert.deepEqual(restarted.marks, state.marks);
+    assert.deepEqual(restarted.sessions[0].bonusMarks, [
+      { studentId: state.students[0].id, score: 0.75 },
+    ]);
+    assert.equal(restarted.modules[0].maxScore, 40);
+    assert.equal(restarted.modules[0].attendanceScore, 4);
+    assert.equal(restarted.assessments[0].componentId, undefined);
     await store.close();
     assert.equal((await api.read()).status, 503);
     assert.equal((await api.health()).status, 503);

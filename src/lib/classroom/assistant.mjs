@@ -1,5 +1,6 @@
 import {
   calculateModule,
+  moduleSettings,
   round,
   normalizedDatabase,
   isScore,
@@ -76,7 +77,12 @@ export function assistantCatalog(db, context) {
     students: db.students
       .filter((item) => item.classId === klass?.id)
       .map(({ id, name, studentCode }) => ({ id, name, studentCode })),
-    modules: modules.map(({ id, name, order }) => ({ id, name, order })),
+    modules: modules.map((module) => ({
+      id: module.id,
+      name: module.name,
+      order: module.order,
+      ...moduleSettings(db, module),
+    })),
     components: db.components
       .filter((item) => moduleIds.has(item.moduleId))
       .map(({ id, moduleId, name, kind, weight }) => ({
@@ -97,11 +103,12 @@ export function assistantCatalog(db, context) {
       .map(({ id, title, date, moduleId }) => ({ id, title, date, moduleId })),
     assessments: db.assessments
       .filter((item) => moduleIds.has(item.moduleId))
-      .map(({ id, title, moduleId, maxScore }) => ({
+      .map(({ id, title, moduleId, maxScore, category }) => ({
         id,
         title,
         moduleId,
         maxScore,
+        category,
       })),
   };
 }
@@ -502,17 +509,25 @@ export function prepareAssistantPlan(db, context, proposal) {
           results.length && results.every((item) => item.grade.complete);
         answers.push({
           title: `نمرات ${student.name}`,
-          headers: ["پودمان", "نمره نهایی از ۲۰", "وضعیت"],
+          headers: [
+            "پودمان",
+            "نمره نهایی",
+            "بارم پودمان",
+            "نمره اضافی",
+            "وضعیت",
+          ],
           rows: results.map(({ module, grade }) => [
             module.name,
-            grade.complete ? grade.total : "ثبت نشده",
+            grade.total ?? "ثبت نشده",
+            grade.max,
+            grade.bonus.points,
             grade.complete
               ? "نهایی"
-              : `ناقص: ${grade.pending.join("، ") || "بارم بخش‌ها"}`,
+              : `در حال تکمیل: ${grade.pending.join("، ") || "بارم پودمان"}`,
           ]),
           text: complete
-            ? `نمره نهایی: ${round(results.reduce((sum, item) => sum + item.grade.total, 0) / results.length)} از ۲۰.`
-            : "نمرهٔ نهایی هنوز کامل نیست؛ این به معنی ثبت‌نشدن نمره‌های آزمون نیست. نمره‌های ثبت‌شده در ریزنمرات زیر آمده‌اند.",
+            ? "نمره‌ها براساس بارم پودمان و سهم حضور محاسبه شده‌اند."
+            : "نمرهٔ فعلی خودکار محاسبه می‌شود و تا تکمیل موارد باقی‌مانده موقت است؛ خانهٔ خالی به معنی نمرهٔ صفر نیست.",
         });
         const selectedIds = new Set(selectedModules.map((module) => module.id));
         const recordedAssessments = db.assessments.filter((item) =>

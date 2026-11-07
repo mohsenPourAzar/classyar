@@ -24,10 +24,7 @@ export default function Assessments({ app }) {
         }
       />
     );
-  const components = db.components.filter(
-      (item) => item.moduleId === module.id && item.kind === "assessment",
-    ),
-    items = db.assessments.filter((item) => item.moduleId === module.id),
+  const items = db.assessments.filter((item) => item.moduleId === module.id),
     selected = items.find((item) => item.id === app.state.assessmentId);
   return (
     <>
@@ -35,11 +32,10 @@ export default function Assessments({ app }) {
         title="آزمون و تمرین"
         description="آیتم‌های ارزیابی را بسازید و نمره‌های هر دانش‌آموز را ثبت کنید."
       >
-        <Button
-          icon="plus"
-          disabled={!components.length}
-          onClick={() => app.open("assessment")}
-        >
+        <Button variant="ghost" icon="edit" onClick={() => app.go("modules")}>
+          بارم پودمان و حضور
+        </Button>
+        <Button icon="plus" onClick={() => app.open("assessment")}>
           آیتم ارزیابی جدید
         </Button>
       </PageHeading>
@@ -68,12 +64,6 @@ export default function Assessments({ app }) {
           <Badge>{fmt(items.length)} آیتم</Badge>
         </div>
       </div>
-      {!components.length && (
-        <div className="note">
-          برای ثبت ارزیابی، ابتدا در صفحهٔ پودمان‌ها یک بخش آزمون یا تمرین ایجاد
-          کنید.
-        </div>
-      )}
       {selected && (
         <section className="card score-panel">
           <CardHeading
@@ -163,11 +153,12 @@ export default function Assessments({ app }) {
                 <div className="row-grow">
                   <h3 className="card-title">{item.title}</h3>
                   <p className="card-subtitle">
-                    {
-                      components.find(
-                        (component) => component.id === item.componentId,
-                      )?.name
-                    }{" "}
+                    {{
+                      exercise: "تمرین",
+                      practical: "آزمون عملی",
+                      written: "آزمون کتبی",
+                      other: "سایر",
+                    }[item.category] || "ارزیابی"}{" "}
                     · {item.date || "بدون تاریخ"}
                   </p>
                   <div className="assessment-meta">
@@ -222,11 +213,9 @@ export default function Assessments({ app }) {
           title="هنوز آزمون یا تمرینی ثبت نشده"
           description="آیتم جدیدی با بارم دلخواه برای این پودمان بسازید."
           action={
-            components.length ? (
-              <Button icon="plus" onClick={() => app.open("assessment")}>
-                تعریف ارزیابی
-              </Button>
-            ) : null
+            <Button icon="plus" onClick={() => app.open("assessment")}>
+              تعریف ارزیابی
+            </Button>
           }
         />
       )}

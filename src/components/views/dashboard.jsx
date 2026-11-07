@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Icon, Button, Stat, Badge, WeightBar } from "../ui.jsx";
 import { fmt } from "../../lib/format.mjs";
-import { attendanceStats, moduleWeight } from "../../lib/classroom/logic.mjs";
+import { attendanceStats, moduleSettings } from "../../lib/classroom/logic.mjs";
 export default function Dashboard({ app }) {
   const db = app.state.db,
     selected = app.selectedClass,
@@ -147,10 +147,22 @@ export default function Dashboard({ app }) {
           <div className="dashboard-module-list" ref={moduleList}>
             {app.modules.length ? (
               visibleModules.map((module) => {
-                const components = db.components.filter(
-                    (item) => item.moduleId === module.id,
-                  ),
-                  weight = moduleWeight(db, module.id);
+                const settings = moduleSettings(db, module),
+                  weight = settings.maxScore,
+                  components = [
+                    {
+                      id: "attendance",
+                      name: "حضور و غیاب",
+                      kind: "attendance",
+                      weight: settings.attendanceScore,
+                    },
+                    {
+                      id: "assessments",
+                      name: "آزمون‌ها و تمرین‌ها",
+                      kind: "assessment",
+                      weight: weight - settings.attendanceScore,
+                    },
+                  ];
                 return (
                   <button
                     type="button"
@@ -168,17 +180,13 @@ export default function Dashboard({ app }) {
                     <div className="row-grow">
                       <strong>{module.name}</strong>
                       <p className="mini-muted">
-                        {fmt(components.length)} بخش نمره‌دهی · مجموع{" "}
-                        {fmt(weight)} نمره
+                        بارم {fmt(weight)} · حضور و غیاب{" "}
+                        {fmt(settings.attendanceScore)}
                       </p>
                       <WeightBar components={components} />
                     </div>
-                    <Badge
-                      kind={
-                        Math.abs(weight - 20) < 0.001 ? "success" : "warning"
-                      }
-                    >
-                      {Math.abs(weight - 20) < 0.001 ? "فعال" : "تنظیم بارم"}
+                    <Badge kind={weight > 0 ? "success" : "warning"}>
+                      {weight > 0 ? "فعال" : "تنظیم بارم"}
                     </Badge>
                   </button>
                 );

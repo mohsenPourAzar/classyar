@@ -10,6 +10,7 @@ import {
 } from "../ui.jsx";
 import { fmt, cn } from "../../lib/format.mjs";
 import { statuses } from "../navigation.mjs";
+import { moduleBonus } from "../../lib/classroom/logic.mjs";
 export default function Attendance({ app }) {
   const sessions = app.classSessions,
     active =
@@ -130,6 +131,11 @@ export default function Attendance({ app }) {
                 </Badge>
               )}
             </div>
+            <p className="attendance-bonus-note">
+              نمرهٔ اضافی فعالیت مستمر را برای همین جلسه ثبت کنید. مجموع
+              امتیازهای جلسات هر پودمان به نمرهٔ آن اضافه می‌شود، تا سقف بارم
+              پودمان. برای حذف امتیاز این جلسه، خانه را خالی کنید.
+            </p>
             <div className="table-wrap">
               <table className="data-table attendance-table">
                 <thead>
@@ -137,6 +143,7 @@ export default function Attendance({ app }) {
                     <th>ردیف</th>
                     <th>دانش‌آموز</th>
                     <th>وضعیت حضور</th>
+                    <th>نمره اضافی این جلسه</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -144,6 +151,14 @@ export default function Attendance({ app }) {
                     const current = records.find(
                       (item) => item.studentId === student.id,
                     )?.status;
+                    const bonus = active.bonusMarks?.find(
+                      (mark) => mark.studentId === student.id,
+                    );
+                    const totalBonus = moduleBonus(
+                      app.state.db,
+                      student.id,
+                      active.moduleId,
+                    ).points;
                     return (
                       <tr key={student.id}>
                         <td className="muted">{fmt(index + 1)}</td>
@@ -175,6 +190,27 @@ export default function Attendance({ app }) {
                               </button>
                             ))}
                           </div>
+                        </td>
+                        <td className="attendance-bonus-cell">
+                          <input
+                            className="grades-input"
+                            type="number"
+                            min="0"
+                            step="0.25"
+                            value={bonus?.score ?? ""}
+                            placeholder="—"
+                            aria-label={"نمره اضافی " + student.name}
+                            onChange={(event) =>
+                              app.setBonusMark(
+                                active.id,
+                                student.id,
+                                event.target.value,
+                              )
+                            }
+                          />
+                          <small className="mini-muted">
+                            جمع پودمان: {fmt(totalBonus)}
+                          </small>
                         </td>
                       </tr>
                     );

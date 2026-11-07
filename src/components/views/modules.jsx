@@ -1,21 +1,14 @@
-import {
-  IconButton,
-  Button,
-  PageHeading,
-  Badge,
-  Empty,
-  WeightBar,
-  componentColor,
-} from "../ui.jsx";
+import { IconButton, Button, PageHeading, Badge, Empty } from "../ui.jsx";
 import { fmt } from "../../lib/format.mjs";
-import { moduleWeight } from "../../lib/classroom/logic.mjs";
+import { moduleSettings } from "../../lib/classroom/logic.mjs";
+
 export default function Modules({ app }) {
   const db = app.state.db;
   return (
     <>
       <PageHeading
-        title="ساختار پودمان‌ها"
-        description="تعداد پودمان‌ها، بخش‌های نمره‌دهی و وزن هر بخش قابل ویرایش است."
+        title="پودمان‌ها و بارم‌بندی"
+        description="فقط بارم نهایی پودمان و سهم حضور و غیاب را مشخص کنید."
       >
         <Button icon="plus" onClick={() => app.open("module")}>
           پودمان جدید
@@ -24,10 +17,10 @@ export default function Modules({ app }) {
       {app.modules.length ? (
         <div className="grid-2">
           {app.modules.map((module) => {
-            const components = db.components.filter(
-                (item) => item.moduleId === module.id,
-              ),
-              weight = moduleWeight(db, module.id);
+            const settings = moduleSettings(db, module);
+            const items = db.assessments.filter(
+              (a) => a.moduleId === module.id,
+            );
             return (
               <section className="card module-card" key={module.id}>
                 <div className="module-heading">
@@ -35,12 +28,13 @@ export default function Modules({ app }) {
                   <div className="row-grow">
                     <h3 className="card-title">{module.name}</h3>
                     <p className="card-subtitle">
-                      {module.description || "ارزیابی بخش‌های عملی و نظری"}
+                      {module.description ||
+                        "محاسبهٔ خودکار نمره از آزمون‌ها، تمرین‌ها و حضور"}
                     </p>
                   </div>
                   <IconButton
                     icon="edit"
-                    label="ویرایش پودمان"
+                    label="ویرایش پودمان و بارم"
                     onClick={() => app.open("module", module)}
                   />
                   <IconButton
@@ -51,59 +45,35 @@ export default function Modules({ app }) {
                   />
                 </div>
                 <div className="weight-summary">
-                  <strong>توزیع بارم</strong>
-                  <Badge
-                    kind={Math.abs(weight - 20) < 0.001 ? "success" : "warning"}
-                  >
-                    مجموع {fmt(weight)} از ۲۰
-                  </Badge>
+                  <strong>بارم نهایی پودمان</strong>
+                  <Badge kind="brand">{fmt(settings.maxScore)}</Badge>
                 </div>
-                <WeightBar components={components} />
-                {Math.abs(weight - 20) > 0.001 && (
-                  <p className="weight-warning">
-                    برای محاسبهٔ نمرهٔ نهایی، مجموع بارم‌ها باید ۲۰ باشد.
-                  </p>
-                )}
                 <div className="module-parts">
-                  {components.map((component, index) => (
-                    <div className="module-part" key={component.id}>
-                      <span
-                        className="part-dot"
-                        style={{ background: componentColor(component, index) }}
-                      />
-                      <strong className="row-grow">{component.name}</strong>
-                      <span className="part-weight">
-                        {fmt(component.weight)} نمره
-                      </span>
-                      <IconButton
-                        icon="edit"
-                        label={"ویرایش " + component.name}
-                        onClick={() =>
-                          app.setState({ moduleId: module.id }, () =>
-                            app.open("component", component),
-                          )
-                        }
-                      />
-                      <IconButton
-                        icon="trash"
-                        label={"حذف " + component.name}
-                        danger
-                        onClick={() => app.remove("component", component)}
-                      />
-                    </div>
-                  ))}
+                  <div className="module-part">
+                    <strong className="row-grow">حضور و غیاب</strong>
+                    <span>{fmt(settings.attendanceScore)} نمره</span>
+                  </div>
+                  <div className="module-part">
+                    <strong className="row-grow">آزمون‌ها و تمرین‌ها</strong>
+                    <span>
+                      {fmt(settings.maxScore - settings.attendanceScore)} نمره
+                    </span>
+                  </div>
                 </div>
+                <p className="card-subtitle">
+                  {fmt(items.length)} آیتم ثبت شده؛ بارم هر آیتم هنگام تعریف آن
+                  مشخص می‌شود.
+                </p>
                 <Button
-                  icon="plus"
+                  icon="clipboard"
                   variant="secondary"
                   className="full-width"
-                  onClick={() =>
-                    app.setState({ moduleId: module.id }, () =>
-                      app.open("component"),
-                    )
-                  }
+                  onClick={() => {
+                    app.setState({ moduleId: module.id, assessmentId: null });
+                    app.go("assessments");
+                  }}
                 >
-                  افزودن بخش نمره‌دهی
+                  مدیریت آزمون‌ها و تمرین‌ها
                 </Button>
               </section>
             );

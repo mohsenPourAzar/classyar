@@ -765,3 +765,16 @@ body {
     width: 26px;
   }
 }
+.attendance-bonus-note {
+  padding: 0 22px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.attendance-bonus-cell {
+  min-width: 130px;
+}
+.attendance-bonus-cell small {
+  display: block;
+  margin-top: 4px;
+  white-space: nowrap;
+}

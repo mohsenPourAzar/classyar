@@ -1,5 +1,5 @@
-import { makeDefaultComponents } from "./defaults.mjs";
 import { makeId } from "../format.mjs";
+import { moduleSettings } from "./logic.mjs";
 import { validateState } from "../server/state.mjs";
 import { resolveReference, normalizeReference } from "./references.mjs";
 
@@ -22,10 +22,10 @@ export const entityLabels = {
 const fieldsByType = {
   class: ["name", "grade", "subject", "year", "color"],
   student: ["name", "studentCode", "note"],
-  module: ["name", "description", "order"],
+  module: ["name", "description", "order", "maxScore", "attendanceScore"],
   component: ["name", "kind", "weight"],
   session: ["title", "date", "moduleId"],
-  assessment: ["title", "date", "componentId", "maxScore"],
+  assessment: ["title", "date", "componentId", "maxScore", "category"],
 };
 const fieldLabels = {
   name: "نام",
@@ -44,6 +44,8 @@ const fieldLabels = {
   moduleId: "پودمان",
   componentId: "بخش نمره‌دهی",
   maxScore: "بارم",
+  attendanceScore: "سهم حضور و غیاب",
+  category: "نوع آیتم",
 };
 const requiredFields = {
   class: ["name", "grade", "year"],
@@ -51,7 +53,7 @@ const requiredFields = {
   module: ["name"],
   component: ["name", "kind", "weight"],
   session: ["title", "date", "moduleId"],
-  assessment: ["title", "componentId", "maxScore"],
+  assessment: ["title", "maxScore"],
 };
 const text = (value) => typeof value === "string" && value.trim().length > 0;
 export function entityClass(db, type, item) {
@@ -108,6 +110,12 @@ export function deleteEntity(db, type, id) {
     (item) =>
       !studentIds.has(item.studentId) && !sessionIds.has(item.sessionId),
   );
+  for (const session of db.sessions) {
+    if (session.bonusMarks)
+      session.bonusMarks = session.bonusMarks.filter(
+        (mark) => !studentIds.has(mark.studentId),
+      );
+  }
   db.marks = db.marks.filter(
     (item) =>
       !studentIds.has(item.studentId) && !assessmentIds.has(item.assessmentId),
@@ -177,7 +185,15 @@ export function prepareEntityChange(db, context, action) {
       db.attendance.length +
       db.marks.length -
       affected.attendance.length -
-      affected.marks.length;
+      affected.marks.length +
+      db.sessions.reduce(
+        (sum, session) => sum + (session.bonusMarks?.length || 0),
+        0,
+      ) -
+      affected.sessions.reduce(
+        (sum, session) => sum + (session.bonusMarks?.length || 0),
+        0,
+      );
     return {
       type: mode,
       entityType: type,
@@ -199,7 +215,9 @@ export function prepareEntityChange(db, context, action) {
     throw Error(`اطلاعات ${entityLabels[type]} معتبر نیست.`);
   const fields = {};
   for (const [key, value] of Object.entries(action.fields)) {
-    if (["weight", "order", "maxScore", "grade"].includes(key)) {
+    if (
+      ["weight", "order", "maxScore", "grade", "attendanceScore"].includes(key)
+    ) {
       if (typeof value !== "number" || !Number.isFinite(value))
         throw Error(`${fieldLabels[key]} باید عدد معتبر باشد.`);
       fields[key] = value;
@@ -266,6 +284,8 @@ export function prepareEntityChange(db, context, action) {
       student: { classId, studentCode: "", note: "" },
       module: {
         classId,
+        maxScore: 20,
+        attendanceScore: 0,
         description: "",
         order:
           Math.max(
@@ -287,7 +307,7 @@ export function prepareEntityChange(db, context, action) {
               .map((session) => Number(session.order) || 0),
           ) + 1,
       },
-      assessment: { moduleId, date: "" },
+      assessment: { moduleId, date: "", category: "other" },
     };
     item = { id, ...defaults[type], ...fields };
   } else item = { ...existing, ...fields };
@@ -313,6 +333,19 @@ export function prepareEntityChange(db, context, action) {
     (!Number.isSafeInteger(item.order) || item.order < 1)
   )
     throw Error("ترتیب پودمان باید عدد صحیح مثبت باشد.");
+  if (type === "module") {
+    const settings = moduleSettings(db, item);
+    if (
+      !(settings.maxScore > 0) ||
+      settings.attendanceScore < 0 ||
+      settings.attendanceScore > settings.maxScore
+    )
+      throw Error(
+        "بارم پودمان باید مثبت و سهم حضور بین صفر و بارم پودمان باشد.",
+      );
+    item.maxScore = settings.maxScore;
+    item.attendanceScore = settings.attendanceScore;
+  }
   if (
     type === "component" &&
     (!["assessment", "attendance"].includes(item.kind) ||
@@ -333,13 +366,19 @@ export function prepareEntityChange(db, context, action) {
       (component) => component.id === item.componentId,
     );
     if (
-      !component ||
-      component.kind !== "assessment" ||
-      component.moduleId !== item.moduleId
+      item.componentId !== undefined &&
+      (!component ||
+        component.kind !== "assessment" ||
+        component.moduleId !== item.moduleId)
     )
       throw Error("بخش ارزشیابی باید از نوع نمره و در پودمان همین آزمون باشد.");
     if (!(item.maxScore > 0))
       throw Error("بارم آزمون باید بزرگ‌تر از صفر باشد.");
+    if (
+      item.category !== undefined &&
+      !["exercise", "practical", "written", "other"].includes(item.category)
+    )
+      throw Error("نوع آیتم باید تمرین، آزمون عملی، آزمون کتبی یا سایر باشد.");
     if (
       db.marks.some(
         (mark) => mark.assessmentId === item.id && mark.score > item.maxScore,
@@ -392,12 +431,11 @@ export function prepareEntityChange(db, context, action) {
       name: "پودمان اول",
       description: "",
       order: 1,
+      maxScore: 20,
+      attendanceScore: 0,
     };
     related.modules.push(module);
-    makeDefaultComponents(related, module.id);
   }
-  if (mode === "create_item" && type === "module")
-    makeDefaultComponents(related, item.id);
   const change = {
     type: mode,
     entityType: type,
@@ -410,11 +448,7 @@ export function prepareEntityChange(db, context, action) {
     beforeLabel: existing
       ? describe(db, type, existing, Object.hasOwn(fields, "note"))
       : "وجود ندارد",
-    afterLabel:
-      describe(db, type, item, Object.hasOwn(fields, "note")) +
-      (related.components.length
-        ? "؛ همراه با بخش‌های پیش‌فرض ۱۵، ۴ و ۱ نمره"
-        : ""),
+    afterLabel: describe(db, type, item, Object.hasOwn(fields, "note")),
   };
   const candidate = structuredClone(db);
   applyEntityChange(candidate, change);

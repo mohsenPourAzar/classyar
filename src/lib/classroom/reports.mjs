@@ -14,87 +14,7 @@ const esc = (x) =>
   );
 const n = (x) => Math.round((Number(x) + Number.EPSILON) * 100) / 100;
 function listRows(db, classId, moduleId = "all") {
-  const klass = db.classes.find((c) => c.id === classId);
-  if (!klass) throw Error("کلاس انتخاب نشده است");
-  const students = db.students.filter((s) => s.classId === classId);
-  const modules = db.modules
-    .filter((m) => m.classId === classId)
-    .sort((a, b) => a.order - b.order);
-  if (moduleId === "all") {
-    const headers = [
-      "ردیف",
-      "نام و نام خانوادگی",
-      "کد دانش‌آموزی",
-      ...modules.map((m) => m.name + " (از ۲۰)"),
-      "میانگین پودمان‌ها (از ۲۰)",
-      "پودمان‌های تکمیل‌شده",
-      "وضعیت",
-    ];
-    const rows = students.map((student, i) => {
-      const grades = modules.map((m) =>
-        L.calculateModule(db, student.id, m.id),
-      );
-      const complete = grades.filter((g) => g.complete);
-      const allFinished =
-        modules.length > 0 && complete.length === modules.length;
-      const avg = allFinished
-        ? n(complete.reduce((sum, g) => sum + g.total, 0) / modules.length)
-        : "";
-      return [
-        i + 1,
-        student.name,
-        student.studentCode || "",
-        ...grades.map((g) => (g.complete ? g.total : "")),
-        avg,
-        `${complete.length} / ${modules.length}`,
-        allFinished ? "نهایی" : "ناقص",
-      ];
-    });
-    return {
-      klass,
-      module: null,
-      title: "خلاصه نمرات تمام پودمان‌ها",
-      headers,
-      rows,
-      students: students.length,
-      modules: modules.length,
-    };
-  }
-  const module = modules.find((m) => m.id === moduleId);
-  if (!module) throw Error("پودمان انتخاب نشده است");
-  const components = db.components.filter((c) => c.moduleId === module.id);
-  const headers = [
-    "ردیف",
-    "نام و نام خانوادگی",
-    "کد دانش‌آموزی",
-    ...components.map((c) => `${c.name} (از ${c.weight})`),
-    "نمره نهایی (از ۲۰)",
-    "وضعیت",
-    "موارد ناقص / توضیحات",
-  ];
-  const rows = students.map((student, i) => {
-    const grade = L.calculateModule(db, student.id, module.id);
-    return [
-      i + 1,
-      student.name,
-      student.studentCode || "",
-      ...grade.breakdown.map((x) => (x.result.complete ? x.result.points : "")),
-      grade.complete ? grade.total : "",
-      grade.complete ? "نهایی" : "ناقص",
-      grade.configured
-        ? grade.pending.join("، ")
-        : `مجموع وزن بخش‌ها ${grade.max} از ۲۰ است`,
-    ];
-  });
-  return {
-    klass,
-    module,
-    title: `ریز نمرات ${module.name}`,
-    headers,
-    rows,
-    students: students.length,
-    modules: 1,
-  };
+  return exportRows(db, classId, moduleId, "detailed");
 }
 const csvCell = (v) =>
   '"' +
@@ -102,7 +22,7 @@ const csvCell = (v) =>
     .replace(/^[=+@\-\t\r]/, (m) => "'" + m)
     .replace(/"/g, '""') +
   '"';
-// Raw assessment totals and weighted final grades are intentionally separate.
+// One attendance column, individual assessment marks, and the live final grade.
 function exportRows(db, classId, moduleId = "all", kind = "final") {
   const klass = db.classes.find((item) => item.id === classId);
   if (!klass) throw Error("کلاس انتخاب نشده است");
@@ -118,69 +38,80 @@ function exportRows(db, classId, moduleId = "all", kind = "final") {
   if (moduleId !== "all" && !modules.length)
     throw Error("پودمان انتخاب نشده است");
   const students = db.students.filter((item) => item.classId === classId);
-  const moduleIds = new Set(modules.map((item) => item.id));
-  const components = modules.flatMap((module) =>
-    db.components.filter((item) => item.moduleId === module.id),
-  );
-  const assessments = modules.flatMap((module) =>
-    db.assessments.filter((item) => item.moduleId === module.id),
-  );
-  const prefix = (id) =>
-    moduleId === "all"
-      ? modules.find((item) => item.id === id).name + " / "
-      : "";
+  const prefix = (module) => (moduleId === "all" ? module.name + " / " : "");
+  const sections = modules.map((module) => ({
+    module,
+    settings: L.moduleSettings(db, module),
+    assessments: db.assessments
+      .filter((a) => a.moduleId === module.id)
+      .map((a, index) => ({ ...a, index }))
+      .sort(
+        (a, b) => assessmentOrder(a) - assessmentOrder(b) || a.index - b.index,
+      ),
+  }));
+  const finalMax = moduleId === "all" ? 20 : sections[0].settings.maxScore;
+  const finalTitle = "نمره نهایی (از " + finalMax + ")";
   const headers =
     kind === "final"
-      ? ["نام و نام خانوادگی", "نمره نهایی (از ۲۰)"]
+      ? ["نام و نام خانوادگی", finalTitle]
       : [
           "ردیف",
           "نام و نام خانوادگی",
-          ...assessments.map(
-            (item) =>
-              `${prefix(item.moduleId)}${item.title} (از ${item.maxScore})`,
-          ),
-          ...components.map(
-            (item) =>
-              `${prefix(item.moduleId)}${item.name} (سهم از ${item.weight})`,
-          ),
-          "جمع نمرات ثبت‌شده (خام)",
-          ...modules.map((item) => `${item.name} (از ۲۰)`),
-          ...(moduleId === "all" ? ["جمع نمرات پودمان‌ها"] : []),
-          "نمره نهایی (از ۲۰)",
+          ...sections.flatMap(({ module, settings, assessments }) => [
+            prefix(module) +
+              "حضور و غیاب (از " +
+              settings.attendanceScore +
+              ")",
+            prefix(module) + "نمره اضافی",
+            ...assessments.map(
+              (a) => prefix(module) + a.title + " (از " + a.maxScore + ")",
+            ),
+            ...(moduleId === "all"
+              ? [module.name + " (از " + settings.maxScore + ")"]
+              : []),
+          ]),
+          finalTitle,
         ];
+  const pendingRows = [];
   const rows = students.map((student, index) => {
-    const grades = modules.map((module) =>
+    const grades = sections.map(({ module }) =>
       L.calculateModule(db, student.id, module.id),
     );
-    const complete =
-      grades.length > 0 && grades.every((grade) => grade.complete);
-    const sum = complete
-      ? n(grades.reduce((total, grade) => total + grade.total, 0))
-      : "";
-    const final = complete ? n(sum / grades.length) : "";
+    const available = grades.filter((g) => g.total !== null);
+    const final =
+      moduleId === "all"
+        ? available.length
+          ? n(
+              available.reduce((sum, g) => sum + (g.total / g.max) * 20, 0) /
+                available.length,
+            )
+          : ""
+        : (grades[0].total ?? "");
+    if (grades.some((g) => !g.complete))
+      pendingRows.push({
+        studentId: student.id,
+        row: index,
+        reasons: grades.flatMap((g, i) =>
+          g.pending.map((reason) => prefix(sections[i].module) + reason),
+        ),
+      });
     if (kind === "final") return [student.name, final];
-    const raw = assessments.map((assessment) => {
-      const mark = db.marks.find(
-        (item) =>
-          item.assessmentId === assessment.id && item.studentId === student.id,
-      );
-      return mark && L.isScore(mark.score, assessment.maxScore)
-        ? Number(mark.score)
-        : "";
-    });
     return [
       index + 1,
       student.name,
-      ...raw,
-      ...components.map((component) => {
-        const result = L.calculateComponent(db, student.id, component);
-        return result.complete ? result.points : "";
-      }),
-      raw.some((value) => value !== "")
-        ? n(raw.reduce((total, value) => total + (value === "" ? 0 : value), 0))
-        : "",
-      ...grades.map((grade) => (grade.complete ? grade.total : "")),
-      ...(moduleId === "all" ? [sum] : []),
+      ...sections.flatMap(({ assessments }, i) => [
+        grades[i].attendance.points ?? "",
+        grades[i].bonus.points,
+        ...assessments.map((a) => {
+          const mark = db.marks.find(
+            (m) => m.assessmentId === a.id && m.studentId === student.id,
+          );
+          return mark && L.isScore(mark.score, a.maxScore)
+            ? Number(mark.score)
+            : "";
+        }),
+        ...(moduleId === "all" ? [grades[i].total ?? ""] : []),
+      ]),
       final,
     ];
   });
@@ -190,9 +121,18 @@ function exportRows(db, classId, moduleId = "all", kind = "final") {
     title: kind === "final" ? "نمرات نهایی" : "ریز نمرات",
     headers,
     rows,
+    pendingRows,
     students: students.length,
-    modules: moduleIds.size,
+    modules: modules.length,
   };
+}
+function assessmentOrder(assessment) {
+  if (
+    assessment.category === "exercise" ||
+    /تمرین|تکلیف/.test(assessment.title)
+  )
+    return 0;
+  return 1;
 }
 function makePrintHTML(report) {
   const line = (values, tag) =>

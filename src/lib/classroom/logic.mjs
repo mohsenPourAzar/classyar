@@ -48,6 +48,8 @@ function moduleWeight(db, moduleId) {
 }
 function calculateComponent(db, studentId, component) {
   const weight = Number(component.weight || 0);
+  if (weight === 0)
+    return { complete: true, points: 0, ratio: 0, recorded: 0, total: 0 };
   if (component.kind === "attendance") {
     const sessions = db.sessions.filter(
       (s) => s.moduleId === component.moduleId,
@@ -151,24 +153,183 @@ function calculateComponent(db, studentId, component) {
     total: assessments.length,
   };
 }
+function moduleSettings(db, moduleOrId) {
+  const module =
+    typeof moduleOrId === "string"
+      ? db.modules.find((item) => item.id === moduleOrId)
+      : moduleOrId;
+  const maxScore = module?.maxScore ?? 20;
+  const legacyWeight = moduleWeight(db, module?.id);
+  const legacyAttendance = getComponents(db, module?.id)
+    .filter((c) => c.kind === "attendance")
+    .reduce((sum, c) => sum + Number(c.weight || 0), 0);
+  return {
+    maxScore,
+    attendanceScore:
+      module?.attendanceScore ??
+      (legacyWeight > 0
+        ? round((legacyAttendance / legacyWeight) * maxScore)
+        : 0),
+  };
+}
+function calculateAttendance(db, studentId, moduleId, weight) {
+  if (weight === 0)
+    return { complete: true, points: 0, ratio: 0, recorded: 0, total: 0 };
+  const sessions = db.sessions.filter((s) => s.moduleId === moduleId);
+  let credited = 0,
+    counted = 0,
+    recorded = 0;
+  for (const session of sessions) {
+    const rec = db.attendance.find(
+      (a) => a.sessionId === session.id && a.studentId === studentId,
+    );
+    if (
+      !rec ||
+      !(rec.status === "excused" || Object.hasOwn(statusPoints, rec.status))
+    )
+      continue;
+    recorded++;
+    if (rec.status === "excused") continue;
+    counted++;
+    credited += statusPoints[rec.status];
+  }
+  return {
+    complete:
+      sessions.length > 0 && recorded === sessions.length && counted > 0,
+    points: counted > 0 ? round((credited / counted) * weight) : null,
+    ratio: counted > 0 ? credited / counted : 0,
+    recorded,
+    total: sessions.length,
+    reason: !sessions.length
+      ? "جلسه‌ای ثبت نشده"
+      : recorded < sessions.length
+        ? "حضور برخی جلسات ثبت نشده"
+        : counted === 0
+          ? "همه جلسات غیبت موجه هستند"
+          : "",
+  };
+}
+function moduleBonus(db, studentId, moduleId) {
+  const records = db.sessions
+    .filter((s) => s.moduleId === moduleId)
+    .flatMap((s) => s.bonusMarks || [])
+    .filter((mark) => mark.studentId === studentId);
+  return {
+    points: round(records.reduce((sum, mark) => sum + mark.score, 0)),
+    recorded: records.length,
+  };
+}
+function setSessionBonus(db, sessionId, studentId, raw) {
+  const session = db.sessions.find((s) => s.id === sessionId);
+  const student = db.students.find((s) => s.id === studentId);
+  if (
+    !session ||
+    !student ||
+    session.classId !== student.classId ||
+    (raw !== "" &&
+      ((typeof raw !== "number" && typeof raw !== "string") ||
+        !Number.isFinite(Number(raw)) ||
+        Number(raw) < 0))
+  )
+    return false;
+  const marks = (session.bonusMarks || []).filter(
+    (mark) => mark.studentId !== studentId,
+  );
+  if (raw !== "") marks.push({ studentId, score: Number(raw) });
+  session.bonusMarks = marks;
+  return true;
+}
 function calculateModule(db, studentId, moduleId) {
-  const components = getComponents(db, moduleId);
-  const max = moduleWeight(db, moduleId);
-  const breakdown = components.map((c) => ({
-    ...c,
-    result: calculateComponent(db, studentId, c),
-  }));
-  const configured = components.length > 0 && Math.abs(max - 20) < 0.001;
-  const complete = configured && breakdown.every((c) => c.result.complete);
-  const sum = round(breakdown.reduce((a, c) => a + (c.result.points || 0), 0));
+  const { maxScore: max, attendanceScore } = moduleSettings(db, moduleId);
+  const bonus = moduleBonus(db, studentId, moduleId);
+  const configured =
+    Number.isFinite(max) &&
+    max > 0 &&
+    Number.isFinite(attendanceScore) &&
+    attendanceScore >= 0 &&
+    attendanceScore <= max;
+  const attendance = calculateAttendance(
+    db,
+    studentId,
+    moduleId,
+    attendanceScore,
+  );
+  const assessments = db.assessments.filter((a) => a.moduleId === moduleId);
+  let earned = 0,
+    maximum = 0,
+    recorded = 0;
+  const missing = [];
+  for (const assessment of assessments) {
+    const mark = db.marks.find(
+      (m) => m.assessmentId === assessment.id && m.studentId === studentId,
+    );
+    maximum += Number(assessment.maxScore);
+    if (mark && isScore(mark.score, assessment.maxScore)) {
+      earned += Number(mark.score);
+      recorded++;
+    } else missing.push(assessment.title || "آیتم ارزشیابی");
+  }
+  const budget = max - attendanceScore;
+  const assessmentComplete =
+    budget === 0 || (maximum > 0 && recorded === assessments.length);
+  const assessmentPoints = maximum > 0 ? (earned / maximum) * budget : 0;
+  const pending = [
+    ...(!attendance.complete ? ["حضور و غیاب: " + attendance.reason] : []),
+    ...(budget > 0
+      ? !assessments.length
+        ? ["آزمون یا تمرینی تعریف نشده"]
+        : missing
+      : []),
+  ];
+  const hasData =
+    (budget > 0 && recorded > 0) ||
+    (attendanceScore > 0 && attendance.points !== null) ||
+    bonus.recorded > 0;
+  const total =
+    configured && hasData
+      ? round(
+          Math.min(
+            max,
+            assessmentPoints +
+              attendance.ratio * attendanceScore +
+              bonus.points,
+          ),
+        )
+      : null;
   return {
     configured,
-    complete,
-    total: complete ? Math.min(20, sum) : null,
-    provisional: sum,
+    complete: configured && attendance.complete && assessmentComplete,
+    total,
+    provisional: total,
     max,
-    breakdown,
-    pending: breakdown.filter((c) => !c.result.complete).map((c) => c.name),
+    attendance,
+    bonus,
+    assessmentPoints: round(assessmentPoints),
+    recorded,
+    assessmentCount: assessments.length,
+    pending,
+    breakdown: [
+      {
+        id: "attendance",
+        name: "حضور و غیاب",
+        kind: "attendance",
+        weight: attendanceScore,
+        result: attendance,
+      },
+      {
+        id: "assessments",
+        name: "آزمون‌ها و تمرین‌ها",
+        kind: "assessment",
+        weight: budget,
+        result: {
+          complete: assessmentComplete,
+          points: round(assessmentPoints),
+          reason: pending
+            .filter((p) => !p.startsWith("حضور و غیاب:"))
+            .join("، "),
+        },
+      },
+    ],
   };
 }
 function attendanceStats(db, classId) {
@@ -187,6 +348,10 @@ export {
   normalizedDatabase,
   calculateModule,
   calculateComponent,
+  moduleSettings,
+  calculateAttendance,
+  moduleBonus,
+  setSessionBonus,
   moduleWeight,
   attendanceStats,
   round,

@@ -4,9 +4,9 @@ import * as L from "../lib/classroom/logic.mjs";
 import * as EX from "../lib/classroom/reports.mjs";
 import seed from "../lib/classroom/seed.json";
 import { readAppearance, applyAppearance } from "../lib/appearance.mjs";
-import { makeDefaultComponents } from "../lib/classroom/defaults.mjs";
 import { downloadText, downloadBinary } from "../lib/download.mjs";
 import { cn, fmt, dateNow, makeId } from "../lib/format.mjs";
+import { parsePersianDate, formatPersianDate } from "../lib/persian-date.mjs";
 import { nav } from "./navigation.mjs";
 import { Icon, Empty, button } from "./ui.jsx";
 import Header from "./layout/header.jsx";
@@ -395,12 +395,22 @@ export default class ClassyarApp extends React.Component {
             .forEach((c) => removeComponents.add(c.id));
         });
       db.assessments
-        .filter((a) => removeComponents.has(a.componentId))
+        .filter(
+          (a) =>
+            removeModules.has(a.moduleId) ||
+            removeComponents.has(a.componentId),
+        )
         .forEach((a) => removeAssessments.add(a.id));
       db.students = db.students.filter((x) => !removeStudents.has(x.id));
       db.modules = db.modules.filter((x) => !removeModules.has(x.id));
       db.components = db.components.filter((x) => !removeComponents.has(x.id));
       db.sessions = db.sessions.filter((x) => !removeSessions.has(x.id));
+      for (const session of db.sessions) {
+        if (session.bonusMarks)
+          session.bonusMarks = session.bonusMarks.filter(
+            (mark) => !removeStudents.has(mark.studentId),
+          );
+      }
       db.assessments = db.assessments.filter(
         (x) => !removeAssessments.has(x.id),
       );
@@ -453,6 +463,11 @@ export default class ClassyarApp extends React.Component {
     });
     this.notify("دانش‌آموزان بدون وضعیت، حاضر ثبت شدند.");
   }
+  setBonusMark(sessionId, studentId, raw) {
+    if (raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0))
+      return;
+    this.write((db) => L.setSessionBonus(db, sessionId, studentId, raw));
+  }
   setMark(aid, studentId, raw, max) {
     if (
       raw !== "" &&
@@ -475,6 +490,14 @@ export default class ClassyarApp extends React.Component {
     if (!m) return;
     const form = new FormData(ev.currentTarget);
     const v = Object.fromEntries(form.entries());
+    if (["session", "assessment"].includes(m.type) && v.date) {
+      const date = parsePersianDate(v.date);
+      if (!date) {
+        this.notify("تاریخ شمسی معتبر را از تقویم انتخاب کنید.");
+        return;
+      }
+      v.date = formatPersianDate(date);
+    }
     const old = m.item;
     const id = old?.id || makeId();
     const classId = this.state.classId,
@@ -485,6 +508,19 @@ export default class ClassyarApp extends React.Component {
     }
     if (m.type === "assessment" && !(Number(v.maxScore) > 0)) {
       this.notify("بارم باید بزرگ‌تر از صفر باشد.");
+      return;
+    }
+    if (
+      m.type === "module" &&
+      (!Number.isFinite(Number(v.maxScore)) ||
+        Number(v.maxScore) <= 0 ||
+        !Number.isFinite(Number(v.attendanceScore)) ||
+        Number(v.attendanceScore) < 0 ||
+        Number(v.attendanceScore) > Number(v.maxScore))
+    ) {
+      this.notify(
+        "بارم پودمان باید مثبت و سهم حضور بین صفر و بارم پودمان باشد.",
+      );
       return;
     }
     this.write((db) => {
@@ -510,8 +546,9 @@ export default class ClassyarApp extends React.Component {
             name: "پودمان اول",
             description: "قابل ویرایش و توسعه",
             order: 1,
+            maxScore: 20,
+            attendanceScore: 0,
           });
-          makeDefaultComponents(db, newModule);
         }
       }
       if (m.type === "student")
@@ -529,8 +566,9 @@ export default class ClassyarApp extends React.Component {
           name: v.name.trim(),
           description: v.description.trim(),
           order: Number(v.order) || 1,
+          maxScore: Number(v.maxScore),
+          attendanceScore: Number(v.attendanceScore),
         });
-        if (!old) makeDefaultComponents(db, id);
       }
       if (m.type === "component")
         put("components", {
@@ -561,7 +599,8 @@ export default class ClassyarApp extends React.Component {
         put("assessments", {
           id,
           moduleId: module.id,
-          componentId: v.componentId,
+          ...(old?.componentId ? { componentId: old.componentId } : {}),
+          category: v.category,
           title: v.title.trim(),
           date: v.date.trim(),
           maxScore: Number(v.maxScore),

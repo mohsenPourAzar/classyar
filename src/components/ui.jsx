@@ -1,4 +1,5 @@
 import Select from "./select.jsx";
+import PersianDatePicker from "./persian-date-picker.jsx";
 import { createElement as e } from "react";
 import { cn, fmt } from "../lib/format.mjs";
 const paths = {
@@ -291,6 +292,14 @@ export function FormInput({
             </option>
           ))}
         </Select>
+      ) : kind === "persian-date" ? (
+        <PersianDatePicker
+          id={id}
+          name={name}
+          defaultValue={value ?? ""}
+          required={required}
+          {...props}
+        />
       ) : (
         <input
           id={id}
@@ -312,6 +321,7 @@ export const componentColor = (component, index = 0) =>
       ? "#36b5b0"
       : ["#7277f3", "#36b5b0", "#c084dc"][index % 3];
 export function WeightBar({ components }) {
+  const total = components.reduce((sum, c) => sum + Number(c.weight || 0), 0);
   return (
     <div
       className="progress-rail"
@@ -327,7 +337,9 @@ export function WeightBar({ components }) {
           title={component.name + ": " + fmt(component.weight)}
           style={{
             width:
-              Math.max(0, Math.min(100, (component.weight / 20) * 100)) + "%",
+              (total > 0
+                ? Math.max(0, Math.min(100, (component.weight / total) * 100))
+                : 0) + "%",
             background: componentColor(component, index),
           }}
         />

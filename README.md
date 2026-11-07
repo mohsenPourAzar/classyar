@@ -131,7 +131,7 @@ The Classyar mark combines an open book, a check mark, and a progress motif. The
 ## Classroom workflow
 
 1. Create a class and add its students individually or in bulk.
-2. Create a module and configure its grading components.
+2. Create a module and set its final score scale and attendance allocation.
 3. Add sessions and record attendance.
 4. Create exams, exercises, or projects and enter marks.
 5. View grades for one module or all modules.
@@ -139,15 +139,21 @@ The Classyar mark combines an open book, a check mark, and a progress motif. The
 
 ### Grade calculation
 
-Each module is graded out of **20**, and its component weights must total 20.
+Each module has a configurable final score scale (`maxScore`, default 20) and attendance allocation (`attendanceScore`, default 0). No separate exam/exercise grading components are needed.
 
 ```text
-Assessment contribution = (total earned marks / total possible marks) × component weight
+Attendance contribution = attendance ratio × module attendance allocation
+Assessment contribution = (total earned marks / total assessment maxima) × (module scale − attendance allocation)
+Final grade = min(module scale, attendance contribution + assessment contribution + activity bonuses)
 ```
 
 Attendance points: present = 1, late = 0.5, absent = 0; excused absences are excluded from the denominator.
 
-The default module allocates 15 points to an exam, 4 to exercises, and 1 to attendance. Weights are editable. Missing marks remain blank; entered zeroes remain zero.
+Create exercises and practical/written exams directly in a module with their individual maximum scores. A module out of 20 with 2 attendance points allocates the other 18 points to all assessments, proportionally to their maxima. Attendance uses recorded statuses only; unrecorded statuses are never inferred as absences. Missing assessment marks remain blank and earn no contribution yet; explicit zeroes remain zero. A live grade appears as soon as any contributing mark or attendance record exists, with pending information listed separately. Every edit recalculates the result. A zero attendance allocation needs no sessions. An entirely unrecorded module stays blank.
+
+Existing assessment links and records are retained. For legacy modules, the attendance allocation is derived from its previous relative share on a 20-point scale until the teacher saves explicit module settings. Legacy exam/exercise weights no longer control the calculation.
+
+Activity bonuses can be entered for each student in each attendance session, independently of attendance status. Sessions store optional `bonusMarks` entries with `studentId` and `score`. Their sum appears in a separate detailed-report column and is added directly to the module grade, capped at the module's configured maximum. Emptying an input removes that session's credit; zero remains an explicit value. Updating attendance preserves credits; deleting a student, session, module, or class removes its related credits.
 
 ## MongoDB and data preservation
 
@@ -187,9 +193,9 @@ PUT requires JSON and a quoted revision header, for example `If-Match: "0"`. Res
 The gradebook offers two reports in Excel, UTF-8 CSV, and print/PDF:
 
 - **Final grades:** student names and final grades out of 20.
-- **Detailed grades:** every assessment mark, each weighted component, raw assessment sum, module grades, and final grade. For all modules, the report also includes the sum of module grades.
+- **Detailed grades:** row number, name, one attendance column, activity bonus, individual exercises, individual exams, and the final grade. All-module reports repeat this group for each module with its subtotal, followed by the overall average.
 
-Files and printouts contain a plain black-and-white bordered table, without branding, banners, or decorative headings. Missing grades stay blank; explicit zeroes remain zero. Raw sums are not weighted final grades. An all-module final grade is the average of module grades and remains blank until every module is complete. Turn off the browser's own headers and footers in the print dialog for a table-only PDF.
+Files and printouts use the same simplified black-and-white table. Missing grades stay blank; explicit zeroes remain zero. Finals update continuously, including while some data is pending; the screen identifies these provisional results. The overall average uses available module grades converted to a common 20-point scale. Turn off the browser's own headers and footers in the print dialog for a table-only PDF.
 
 ## Persian voice assistant
 

@@ -918,3 +918,16 @@
     margin-block: 6px 10px;
   }
 }
+@media screen and (max-width: 640px) {
+  .attendance-table {
+    min-width: 500px;
+  }
+  .attendance-table th:nth-child(2),
+  .attendance-table td:nth-child(2) {
+    width: 32%;
+  }
+  .attendance-table th:nth-child(3),
+  .attendance-table td:nth-child(3) {
+    width: 40%;
+  }
+}

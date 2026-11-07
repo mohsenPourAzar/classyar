@@ -77,6 +77,21 @@ export function validateState(state) {
     state.assessments.map((record) => [record.id, record]),
   );
   if (
+    state.modules.some(
+      (module) =>
+        (module.maxScore !== undefined &&
+          (typeof module.maxScore !== "number" ||
+            !Number.isFinite(module.maxScore) ||
+            module.maxScore <= 0)) ||
+        (module.attendanceScore !== undefined &&
+          (typeof module.attendanceScore !== "number" ||
+            !Number.isFinite(module.attendanceScore) ||
+            module.attendanceScore < 0 ||
+            module.attendanceScore > (module.maxScore ?? 20))),
+    )
+  )
+    return false;
+  if (
     state.components.some(
       (record) =>
         !["assessment", "attendance"].includes(record.kind) ||
@@ -97,8 +112,12 @@ export function validateState(state) {
     state.assessments.some((record) => {
       const component = byComponent.get(record.componentId);
       return (
-        !component ||
-        component.moduleId !== record.moduleId ||
+        (record.componentId !== undefined &&
+          (!component || component.moduleId !== record.moduleId)) ||
+        (record.category !== undefined &&
+          !["exercise", "practical", "written", "other"].includes(
+            record.category,
+          )) ||
         typeof record.maxScore !== "number" ||
         !Number.isFinite(record.maxScore) ||
         record.maxScore <= 0
@@ -108,6 +127,26 @@ export function validateState(state) {
     return false;
   const attendancePairs = new Set(),
     markPairs = new Set();
+  for (const session of state.sessions) {
+    if (session.bonusMarks === undefined) continue;
+    if (!Array.isArray(session.bonusMarks)) return false;
+    const students = new Set();
+    for (const mark of session.bonusMarks) {
+      if (
+        !mark ||
+        typeof mark !== "object" ||
+        Array.isArray(mark) ||
+        !byStudent.has(mark.studentId) ||
+        byStudent.get(mark.studentId).classId !== session.classId ||
+        typeof mark.score !== "number" ||
+        !Number.isFinite(mark.score) ||
+        mark.score < 0 ||
+        students.has(mark.studentId)
+      )
+        return false;
+      students.add(mark.studentId);
+    }
+  }
   for (const record of state.attendance) {
     const session = bySession.get(record.sessionId),
       student = byStudent.get(record.studentId),

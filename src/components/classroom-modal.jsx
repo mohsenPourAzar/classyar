@@ -1,6 +1,7 @@
 import { createElement as e, useEffect, useRef } from "react";
 import { Icon, Button, IconButton, FormInput } from "./ui.jsx";
 import { fmt, dateNow } from "../lib/format.mjs";
+import { moduleSettings } from "../lib/classroom/logic.mjs";
 
 export default function ClassroomModal({ app }) {
   const dialogRef = useRef(null);
@@ -142,6 +143,9 @@ export default function ClassroomModal({ app }) {
     ];
   }
   if (m.type === "module") {
+    const settings = m.item
+      ? moduleSettings(app.state.db, item)
+      : { maxScore: 20, attendanceScore: 0 };
     title = m.item ? "ویرایش پودمان" : "ایجاد پودمان";
     fields = [
       e(FormInput, {
@@ -151,6 +155,29 @@ export default function ClassroomModal({ app }) {
         required: true,
         placeholder: "مثلاً پودمان دوم",
       }),
+      e(FormInput, {
+        label: "بارم نهایی پودمان",
+        name: "maxScore",
+        kind: "number",
+        min: 0.25,
+        step: 0.25,
+        value: settings.maxScore,
+        required: true,
+      }),
+      e(FormInput, {
+        label: "سهم حضور و غیاب از بارم پودمان",
+        name: "attendanceScore",
+        kind: "number",
+        min: 0,
+        step: 0.25,
+        value: settings.attendanceScore,
+        required: true,
+      }),
+      e(
+        "p",
+        { className: "note" },
+        "نمرهٔ حضور براساس جلسات همین پودمان محاسبه می‌شود. باقی بارم به مجموع آزمون‌ها و تمرین‌ها اختصاص دارد و نمره با هر ثبت یا تغییر، خودکار به‌روز می‌شود.",
+      ),
       e(FormInput, {
         label: "ترتیب نمایش",
         name: "order",
@@ -191,7 +218,7 @@ export default function ClassroomModal({ app }) {
         ],
       }),
       e(FormInput, {
-        label: "سهم از نمره نهایی (از ۲۰)",
+        label: "بارم بخش (وزن نسبی در نمره نهایی)",
         name: "weight",
         kind: "number",
         value: item.weight ?? 0,
@@ -203,7 +230,7 @@ export default function ClassroomModal({ app }) {
       e(
         "p",
         { className: "note" },
-        "می‌توانید هر تعداد بخش تعریف کنید؛ جمع وزن بخش‌ها باید ۲۰ شود. تغییر نوع بخش ممکن است روی ارزیابی‌های قبلی اثر بگذارد.",
+        "مجموع بارم‌ها می‌تواند هر عدد مثبتی باشد؛ نتیجه به نسبت بارم‌ها از ۲۰ محاسبه می‌شود. بارم صفر یعنی این بخش در نمرهٔ نهایی اثری ندارد و تکمیل آن الزامی نیست. تغییر نوع بخش ممکن است روی ارزیابی‌های قبلی اثر بگذارد.",
       ),
     ];
   }
@@ -219,6 +246,7 @@ export default function ClassroomModal({ app }) {
       e(FormInput, {
         label: "تاریخ جلسه (شمسی)",
         name: "date",
+        kind: "persian-date",
         value: item.date || dateNow(),
         required: true,
         placeholder: "۱۴۰۵/۰۸/۱۱",
@@ -239,9 +267,6 @@ export default function ClassroomModal({ app }) {
     ];
   }
   if (m.type === "assessment") {
-    const opts = app.state.db.components.filter(
-      (c) => c.moduleId === module?.id && c.kind === "assessment",
-    );
     title = m.item ? "ویرایش آیتم ارزشیابی" : "آزمون یا تمرین جدید";
     fields = [
       e(FormInput, {
@@ -252,12 +277,19 @@ export default function ClassroomModal({ app }) {
         placeholder: "مثلاً آزمون پودمان اول",
       }),
       e(FormInput, {
-        label: "بخش نمره‌دهی",
-        name: "componentId",
+        label: "نوع آیتم",
+        name: "category",
         kind: "select",
-        value: item.componentId || opts[0]?.id || "",
+        value:
+          item.category ||
+          (/تمرین|تکلیف/.test(item.title || "") ? "exercise" : "written"),
         required: true,
-        options: opts.map((c) => ({ label: c.name, value: c.id })),
+        options: [
+          { value: "exercise", label: "تمرین" },
+          { value: "practical", label: "آزمون عملی" },
+          { value: "written", label: "آزمون کتبی" },
+          { value: "other", label: "سایر" },
+        ],
       }),
       e(
         "div",
@@ -274,13 +306,14 @@ export default function ClassroomModal({ app }) {
         e(FormInput, {
           label: "تاریخ (شمسی)",
           name: "date",
+          kind: "persian-date",
           value: item.date || dateNow(),
         }),
       ),
       e(
         "p",
         { className: "note" },
-        "بارم این آیتم مستقل از سهم بخش است. همه آیتم‌های یک بخش به نسبت بارم خود در آن بخش اثر می‌گذارند.",
+        "جمع نمره‌های آزمون‌ها و تمرین‌ها به سهم باقی‌ماندهٔ بارم پودمان تبدیل می‌شود؛ هر آیتم به نسبت بارم خودش در نمره اثر می‌گذارد.",
       ),
     ];
   }
